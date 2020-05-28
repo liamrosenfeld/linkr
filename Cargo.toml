@@ -1,0 +1,8 @@
+[package]
+name = "linkr"
+version = "0.1.0"
+authors = ["Liam Rosenfeld <me@liamrosenfeld.com>"]
+edition = "2018"
+
+[dependencies]
+rocket = "0.4.4"

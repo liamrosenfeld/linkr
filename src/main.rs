@@ -1,56 +1,33 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-#[macro_use]
-extern crate rocket;
+#[macro_use] extern crate rocket;
+#[macro_use] extern crate diesel;
+extern crate dotenv;
 
-use rocket::http::RawStr;
-use rocket::request::Form;
-use rocket::response::Redirect;
-use rocket::State;
-use std::sync::RwLock;
+use dotenv::dotenv;
+use std::env;
 
-mod repository;
-mod shortener;
-use repository::Repository;
+mod schema;
+mod models;
+mod db;
+mod static_files;
+mod routes;
+mod catchers;
 
-/* --------------------------------- lookup --------------------------------- */
+fn rocket() -> rocket::Rocket {
+    dotenv().ok();
 
-#[get("/<id>")]
-fn lookup(repo: State<RwLock<Repository>>, id: String) -> Result<Redirect, &'static str> {
-    match repo.read().unwrap().lookup(&id) {
-        Some(url) => Ok(Redirect::permanent(format!("{}", url))),
-        _ => Err("Requested ID was not found."),
-    }
+    let database_url = env::var("DATABASE_URL").expect("set DATABASE_URL");
+
+    let pool = db::init_pool(database_url);
+    rocket::ignite()
+        .manage(pool)
+        .mount("/", routes![routes::lookup, static_files::all, static_files::index])
+        .mount("/api", routes![routes::shorten])
+        .register(catchers![catchers::not_found, catchers::internal_error])
+
 }
-
-/* ----------------------------------- api ---------------------------------- */
-
-#[derive(FromForm)]
-struct Url<'f> {
-    url: &'f RawStr,
-}
-
-#[post("/", data = "<url_form>")]
-fn shorten(repo: State<RwLock<Repository>>, url_form: Form<Url>) -> Result<String, String> {
-    let ref url = format!("{}", url_form.url);
-    let mut repo = repo.write().unwrap();
-    let id = repo.store(&url);
-    Ok(id.to_string())
-}
-
-/* -------------------------------- dashboard ------------------------------- */
-
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
-}
-
-/* ---------------------------------- start --------------------------------- */
 
 fn main() {
-    rocket::ignite()
-        .manage(RwLock::new(Repository::new()))
-        .mount("/", routes![lookup, index])
-        .mount("/api", routes![shorten])
-        .launch();
+    rocket().launch();
 }

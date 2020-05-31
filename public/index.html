@@ -1,11 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Linkr</title>
-</head>
-<body>
-    <h1>Hello!!!</h1>
-</body>
+  </head>
+  <body>
+    <h1>Linkr Dashboard</h1>
+
+    <h2>Create New Shortcuts</h2>
+    <div>
+      <label for="short">this-domain.com/</label>
+      <input id="short" name="short" value="" />
+    </div>
+
+    <div>
+      <label for="short">original url:</label>
+      <input id="orig" name="original" value="http://" />
+    </div>
+
+    <button id="shorten">shorten!</button>
+
+    <span id="output"> </span>
+
+    <script>
+      document.getElementById("shorten").addEventListener("click", (event) => {
+        let short = document.getElementById("short").value;
+        let orig = document.getElementById("orig").value;
+
+        const data = { short: short, orig: orig };
+        const dataEncoded = new URLSearchParams(data).toString();
+        const options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: dataEncoded,
+        };
+
+        fetch("/api/shorten/", options).then((response) => {
+          switch (response.status) {
+            case 200:
+              document.getElementById("output").textContent =
+                "Shortcut created!";
+                break;
+            case 409:
+              document.getElementById("output").textContent =
+                "That short is already in use. (Code: 409)";
+              break;
+            case 500:
+              document.getElementById("output").textContent =
+                "There was an internal server error. (Code: 500)";
+              break;
+            default:
+              document.getElementById("output").textContent =
+                "There was an internal server error.";
+              break;
+          }
+        });
+      });
+    </script>
+  </body>
 </html>

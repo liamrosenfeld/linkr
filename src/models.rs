@@ -54,17 +54,10 @@ impl Link {
             .is_ok()
     }
 
-    pub fn insert(link: NewLink, conn: &PgConnection) -> bool {
-        // check that short has not already been used
-        if Link::get_by_short(link.short.clone(), &conn).is_ok() {
-            return false
-        };
-
-        // insert it
+    pub fn insert(link: NewLink, conn: &PgConnection) -> QueryResult<usize> {
         diesel::insert_into(links::table)
             .values(&link)
             .execute(conn)
-            .is_ok()
     }
 
     pub fn delete_by_id(id: i32, conn: &PgConnection) -> bool {

@@ -2,6 +2,9 @@
 
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate diesel;
+#[macro_use] extern crate serde_json;
+extern crate serde;
+extern crate rocket_contrib;
 extern crate dotenv;
 
 use dotenv::dotenv;
@@ -23,7 +26,7 @@ fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .manage(pool)
         .mount("/", routes![routes::lookup, static_files::all, static_files::index])
-        .mount("/api", routes![routes::shorten])
+        .mount("/api", routes![routes::shorten, routes::all])
         .register(catchers![catchers::not_found, catchers::internal_error])
 
 }

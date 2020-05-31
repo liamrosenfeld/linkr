@@ -5,18 +5,20 @@ use diesel::pg::PgConnection;
 use crate::schema::links;
 use crate::schema::links::dsl::links as all_links;
 
-#[derive(Queryable, Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Queryable, Serialize, Debug, Clone)]
 pub struct Link {
     pub id: i32,
     pub short: String,
-    pub orig: String,
+    pub long: String,
 }
 
 #[derive(Insertable, FromForm)]
 #[table_name = "links"]
 pub struct NewLink {
     pub short: String,
-    pub orig: String,
+    pub long: String,
 }
 
 impl Link {
@@ -41,15 +43,15 @@ impl Link {
     }
 
     pub fn update_by_id(id: i32, conn: &PgConnection, link: NewLink) -> bool {
-        use crate::schema::links::dsl::{short as s, orig as o};
+        use crate::schema::links::dsl::{short as s, long as o};
 
         let NewLink {
             short,
-            orig
+            long
         } = link;
 
         diesel::update(all_links.find(id))
-            .set((s.eq(short), o.eq(orig)))
+            .set((s.eq(short), o.eq(long)))
             .get_result::<Link>(conn)
             .is_ok()
     }

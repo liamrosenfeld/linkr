@@ -2,6 +2,9 @@ use rocket::request::Form;
 use rocket::response::Redirect;
 use rocket::http::Status;
 
+use rocket_contrib::json::Json;
+use serde_json::Value;
+
 use diesel::result::Error;
 use diesel::result::DatabaseErrorKind;
 
@@ -13,7 +16,7 @@ use crate::models::{Link, NewLink};
 #[get("/<short>")]
 pub fn lookup(conn: DbConn, short: String) -> Result<Redirect, Status> {
     match Link::get_by_short(short, &conn) {
-        Ok(link) => Ok(Redirect::permanent(link.orig)),
+        Ok(link) => Ok(Redirect::permanent(link.long)),
         Err(Error::NotFound) => Err(Status::NotFound),
         _ => Err(Status::InternalServerError)
     }
@@ -28,5 +31,13 @@ pub fn shorten(conn: DbConn, link_form: Form<NewLink>) -> Status {
         Ok(_) => Status::Ok,
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Status::Conflict,
         Err(_) => Status::InternalServerError
+    }
+}
+
+#[get("/all")]
+pub fn all(conn: DbConn) -> Result<Json<Value>, Status> {
+    match Link::all(&conn) {
+        Ok(links) => Ok(Json(json!(links))),
+        Err(_) => Err(Status::InternalServerError)
     }
 }

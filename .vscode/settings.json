@@ -6,7 +6,7 @@
         "editor.tabSize": 2
     },
     "[javascript]": {
-        "editor.tabSize": 2
+        "editor.tabSize": 4
     },
     "[rust]": {
         "editor.tabSize": 4

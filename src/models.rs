@@ -1,6 +1,7 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::result::Error;
 
 use crate::schema::links;
 use crate::schema::links::dsl::links as all_links;
@@ -62,12 +63,11 @@ impl Link {
             .execute(conn)
     }
 
-    pub fn delete_by_id(id: i32, conn: &PgConnection) -> bool {
+    pub fn delete_by_id(id: i32, conn: &PgConnection) -> QueryResult<usize> {
         if Link::get(id, conn).is_err() {
-            return false;
+            return Err(Error::NotFound);
         };
         diesel::delete(all_links.find(id))
             .execute(conn)
-            .is_ok()
     }
 }

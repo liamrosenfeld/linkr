@@ -5,6 +5,37 @@ getTable();
 
 /* ------------------------- functions run directly ------------------------- */
 
+function removeByID(id) {
+    const options = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "id=" + id,
+    };
+    fetch("/api/delete/", options).then((response) => {
+        switch (response.status) {
+            case 200:
+                document.getElementById("manage-output").textContent =
+                    "Shortcut deleted!";
+                getTable()
+                break;
+            case 404:
+                document.getElementById("manage-output").textContent =
+                    "That link does not exist. (Code: 404)";
+                break;
+            case 500:
+                document.getElementById("manage-output").textContent =
+                    "There was an internal server error. (Code: 500)";
+                break;
+            default:
+                document.getElementById("manage-output").textContent =
+                    "There was an internal server error.";
+                break;
+        }
+    });
+}
+
 function sendCreate() {
     let short = document.getElementById("short").value;
     let long = document.getElementById("long").value;
@@ -22,20 +53,20 @@ function sendCreate() {
     fetch("/api/shorten/", options).then((response) => {
         switch (response.status) {
             case 200:
-                document.getElementById("output").textContent =
+                document.getElementById("new-output").textContent =
                     "Shortcut created!";
                 getTable()
                 break;
             case 409:
-                document.getElementById("output").textContent =
+                document.getElementById("new-output").textContent =
                     "That short is already in use. (Code: 409)";
                 break;
             case 500:
-                document.getElementById("output").textContent =
+                document.getElementById("new-output").textContent =
                     "There was an internal server error. (Code: 500)";
                 break;
             default:
-                document.getElementById("output").textContent =
+                document.getElementById("new-output").textContent =
                     "There was an internal server error.";
                 break;
         }
@@ -85,7 +116,7 @@ function buildTable(links) {
     let table = document.createElement("table");
 
     // header
-    const colNames = ["Short", "Long"];
+    const colNames = ["Short", "Long", "Actions"];
     let headerRow = document.createElement("tr");
     for (const colName of colNames) {
         let header = document.createElement("th");
@@ -98,11 +129,20 @@ function buildTable(links) {
     const propNames = ["short", "long"];
     for (const link of links) {
         let row = document.createElement("tr");
+
+        // add text from server
         for (const prop of propNames) {
             let entry = document.createElement("td");
             entry.textContent = link[prop];
             row.appendChild(entry);
         }
+
+        // actions
+        let deleteButton = document.createElement("button");
+        deleteButton.textContent = "delete";
+        deleteButton.addEventListener("click", () => { removeByID(link.id) });
+        row.appendChild(deleteButton);
+
         table.appendChild(row);
     }
 

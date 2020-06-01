@@ -26,7 +26,7 @@ fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .manage(pool)
         .mount("/", routes![routes::lookup, static_files::all, static_files::index])
-        .mount("/api", routes![routes::shorten, routes::all])
+        .mount("/api", routes![routes::shorten, routes::all, routes::delete])
         .register(catchers![catchers::not_found, catchers::internal_error])
 
 }

@@ -48,6 +48,21 @@ pub fn delete(conn: DbConn, id_form: Form<ID>) -> Status {
     }
 }
 
+#[derive(FromForm)]
+pub struct Update {
+    id: usize,
+    long: String
+}
+
+#[post("/update", data = "<update_form>")]
+pub fn update(conn: DbConn, update_form: Form<Update>) -> Status {
+    let update = update_form.into_inner();
+    match Link::update_by_id(update.id.try_into().unwrap(), update.long, &conn) {
+        Ok(_) => Status::Ok,
+        Err(err) => error_status(err)
+    }
+}
+
 #[get("/all")]
 pub fn all(conn: DbConn) -> Result<Json<Value>, Status> {
     match Link::all(&conn) {

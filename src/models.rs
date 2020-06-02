@@ -43,18 +43,12 @@ impl Link {
             .get_results::<Link>(conn)
     }
 
-    pub fn update_by_id(id: i32, conn: &PgConnection, link: NewLink) -> bool {
-        use crate::schema::links::dsl::{short as s, long as o};
-
-        let NewLink {
-            short,
-            long
-        } = link;
+    pub fn update_by_id(id: i32, new_long: String, conn: &PgConnection) -> QueryResult<Link> {
+        use crate::schema::links::dsl::long;
 
         diesel::update(all_links.find(id))
-            .set((s.eq(short), o.eq(long)))
+            .set( long.eq(new_long))
             .get_result::<Link>(conn)
-            .is_ok()
     }
 
     pub fn insert(link: NewLink, conn: &PgConnection) -> QueryResult<usize> {

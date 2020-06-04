@@ -9,7 +9,7 @@ use diesel::result::Error;
 use diesel::result::DatabaseErrorKind;
 
 use crate::db::Conn as DbConn;
-use crate::models::{Link, NewLink};
+use crate::links_models::{Link, NewLink};
 
 use std::convert::TryInto;
 
@@ -25,9 +25,16 @@ pub fn lookup(conn: DbConn, short: String) -> Result<Redirect, Status> {
 
 /* ----------------------------------- api ---------------------------------- */
 
+const RESERVED_LINKS: [&str; 3] = ["api", "login", "resource"];
+
 #[post("/shorten", data = "<link_form>")]
 pub fn shorten(conn: DbConn, link_form: Form<NewLink>) -> Status {
     let link = link_form.into_inner();
+    
+    if RESERVED_LINKS.iter().any(|&reserved| reserved == link.short) {
+        return Status::UnprocessableEntity;
+    }
+
     match Link::insert(link, &conn) {
         Ok(_) => Status::Ok,
         Err(err) => error_status(err)

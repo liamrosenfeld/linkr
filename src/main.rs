@@ -11,10 +11,13 @@ use dotenv::dotenv;
 use std::env;
 
 mod schema;
-mod models;
 mod db;
 mod static_files;
-mod routes;
+mod links_models;
+mod users_models;
+mod users_crypto;
+mod links_api;
+mod users_api;
 mod catchers;
 
 fn rocket() -> rocket::Rocket {
@@ -25,8 +28,9 @@ fn rocket() -> rocket::Rocket {
     let pool = db::init_pool(database_url);
     rocket::ignite()
         .manage(pool)
-        .mount("/", routes![routes::lookup, static_files::all, static_files::index])
-        .mount("/api", routes![routes::shorten, routes::all, routes::delete, routes::update])
+        .mount("/", routes![links_api::lookup, static_files::all, static_files::index, static_files::login])
+        .mount("/api/links/", routes![links_api::shorten, links_api::all, links_api::delete, links_api::update])
+        .mount("/api/users/", routes![users_api::new, users_api::delete])
         .register(catchers![catchers::not_found, catchers::internal_error])
 }
 

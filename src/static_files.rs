@@ -7,6 +7,11 @@ pub fn index() -> io::Result<NamedFile> {
     NamedFile::open("public/index.html")
 }
 
+#[get("/signup")]
+pub fn login() -> io::Result<NamedFile> {
+    NamedFile::open("public/signup.html")
+}
+
 #[get("/resource/<file..>", rank = 5)]
 pub fn all(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("public/").join(file)).ok()

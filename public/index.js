@@ -33,7 +33,7 @@ function removeByID(id) {
                 break;
             default:
                 document.getElementById("manage-output").textContent =
-                    "There was an internal server error.";
+                    `An error has occurred. (Code: ${response.status}).`;
                 break;
         }
     });
@@ -53,7 +53,7 @@ function sendCreate() {
         body: dataEncoded,
     };
 
-    fetch("/api/shorten/", options).then((response) => {
+    fetch("/api/links/shorten/", options).then((response) => {
         switch (response.status) {
             case 200:
                 document.getElementById("new-output").textContent =
@@ -64,13 +64,17 @@ function sendCreate() {
                 document.getElementById("new-output").textContent =
                     "That short is already in use. (Code: 409)";
                 break;
+            case 422:
+                document.getElementById("new-output").textContent =
+                    "That short is reserved by this site. (Code: 422)";
+                break;
             case 500:
                 document.getElementById("new-output").textContent =
                     "There was an internal server error. (Code: 500)";
                 break;
             default:
                 document.getElementById("new-output").textContent =
-                    "There was an internal server error.";
+                    `An error has occurred. (Code: ${response.status}).`;
                 break;
         }
     });
@@ -86,7 +90,7 @@ function getTable() {
         },
     };
 
-    fetch("/api/all/", options).then((response) => {
+    fetch("/api/links/all/", options).then((response) => {
         if ((response.status = 200)) {
             response.json().then((data) => {
                 if (data.length == 0) {
@@ -212,7 +216,7 @@ async function sendUpdate(id, newLong) {
         body: dataEncoded,
     };
 
-    let response = await fetch("/api/update/", options);
+    let response = await fetch("/api/links/update/", options);
     switch (response.status) {
         case 200:
             document.getElementById("manage-output").textContent =

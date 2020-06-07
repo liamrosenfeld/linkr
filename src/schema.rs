@@ -1,20 +1,16 @@
 table! {
     links (id) {
         id -> Int4,
-        short -> Varchar,
-        long -> Varchar,
+        short -> Text,
+        long -> Text,
     }
 }
 
 table! {
-    users (id) {
-        id -> Int4,
-        username -> Varchar,
-        password -> Varchar,
+    users (username) {
+        username -> Text,
+        pw_hash -> Text,
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    links,
-    users,
-);
+allow_tables_to_appear_in_same_query!(links, users,);

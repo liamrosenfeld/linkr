@@ -66,7 +66,7 @@ function sendCreate() {
                 break;
             case 422:
                 document.getElementById("new-output").textContent =
-                    "That short is reserved by this site. (Code: 422)";
+                    "That short either contains non alphanumeric characters or is reserved by this site. (Code: 422)";
                 break;
             case 500:
                 document.getElementById("new-output").textContent =

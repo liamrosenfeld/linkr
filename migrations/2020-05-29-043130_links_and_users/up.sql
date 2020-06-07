@@ -1,0 +1,10 @@
+CREATE TABLE links(
+  id    SERIAL PRIMARY KEY,
+  short TEXT NOT NULL UNIQUE,
+  long  TEXT NOT NULL
+);
+
+CREATE TABLE users(
+  username TEXT PRIMARY KEY,
+  pw_hash  TEXT NOT NULL
+);

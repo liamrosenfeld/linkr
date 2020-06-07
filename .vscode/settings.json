@@ -1,14 +1,16 @@
 {
-    "[css]": {
-        "editor.tabSize": 2
-    },
-    "[html]": {
-        "editor.tabSize": 2
-    },
-    "[javascript]": {
-        "editor.tabSize": 4
-    },
-    "[rust]": {
-        "editor.tabSize": 4
-    }
+  "[css]": {
+    "editor.tabSize": 2
+  },
+  "[html]": {
+    "editor.tabSize": 2
+  },
+  "[javascript]": {
+    "editor.tabSize": 4
+  },
+  "[rust]": {
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "matklad.rust-analyzer"
+  },
+  "editor.formatOnSave": true
 }

@@ -1,6 +1,6 @@
 use diesel;
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::prelude::*;
 use diesel::result::Error;
 
 use crate::schema::links;
@@ -24,30 +24,24 @@ pub struct NewLink {
 
 impl Link {
     pub fn get(id: i32, conn: &PgConnection) -> QueryResult<Link> {
-        all_links
-            .find(id)
-            .get_result::<Link>(conn)
+        all_links.find(id).get_result::<Link>(conn)
     }
 
     pub fn get_by_short(short: String, conn: &PgConnection) -> QueryResult<Link> {
         use crate::schema::links::dsl::short as s;
 
-        all_links
-            .filter(s.eq(short))
-            .get_result::<Link>(conn)
+        all_links.filter(s.eq(short)).get_result::<Link>(conn)
     }
 
     pub fn all(conn: &PgConnection) -> QueryResult<Vec<Link>> {
-        all_links
-            .order(links::id.desc())
-            .get_results::<Link>(conn)
+        all_links.order(links::id.desc()).get_results::<Link>(conn)
     }
 
     pub fn update_by_id(id: i32, new_long: String, conn: &PgConnection) -> QueryResult<Link> {
         use crate::schema::links::dsl::long;
 
         diesel::update(all_links.find(id))
-            .set( long.eq(new_long))
+            .set(long.eq(new_long))
             .get_result::<Link>(conn)
     }
 
@@ -61,7 +55,6 @@ impl Link {
         if Link::get(id, conn).is_err() {
             return Err(Error::NotFound);
         };
-        diesel::delete(all_links.find(id))
-            .execute(conn)
+        diesel::delete(all_links.find(id)).execute(conn)
     }
 }

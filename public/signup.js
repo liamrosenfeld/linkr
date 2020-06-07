@@ -13,6 +13,10 @@ function sendLogin() {
     };
 
     fetch("/api/users/new/", options).then((response) => {
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
         switch (response.status) {
             case 409:
                 document.getElementById("error-text").textContent =
@@ -21,10 +25,6 @@ function sendLogin() {
             case 500:
                 document.getElementById("error-text").textContent =
                     "There was an internal server error. (Code: 500)";
-                break;
-            default:
-                document.getElementById("error-text").textContent =
-                    `An error has occurred. (Code: ${response.status}).`;
                 break;
         }
     });

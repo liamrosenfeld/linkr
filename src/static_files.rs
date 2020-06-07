@@ -1,6 +1,6 @@
+use rocket::response::NamedFile;
 use std::io;
 use std::path::{Path, PathBuf};
-use rocket::response::NamedFile;
 
 #[get("/")]
 pub fn index() -> io::Result<NamedFile> {
@@ -12,7 +12,12 @@ pub fn login() -> io::Result<NamedFile> {
     NamedFile::open("public/signup.html")
 }
 
-#[get("/resource/<file..>", rank = 5)]
+#[get("/favicon.ico")]
+pub fn favicon() -> io::Result<NamedFile> {
+    NamedFile::open("public/favicon.ico")
+}
+
+#[get("/resource/<file..>", rank = 2)]
 pub fn all(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("public/").join(file)).ok()
 }

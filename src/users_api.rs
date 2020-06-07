@@ -1,49 +1,54 @@
+use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::Form;
-use rocket::http::Status;
+use rocket::response::Redirect;
 
-use rocket_contrib::json::Json;
-use serde_json::Value;
-
-use diesel::result::Error;
 use diesel::result::DatabaseErrorKind;
+use diesel::result::Error;
 
 use crate::db::Conn as DbConn;
-use crate::users_models::{User, NewUser};
-
-use std::convert::TryInto;
+use crate::users_models::User;
 
 #[derive(FromForm)]
-pub struct NewUserInfo {
+pub struct Login {
     username: String,
-    password: String
+    password: String,
 }
 
 #[post("/new", data = "<user_form>")]
-pub fn new(conn: DbConn, user_form: Form<NewUserInfo>) -> Status {
+pub fn new(
+    mut cookies: Cookies<'_>,
+    conn: DbConn,
+    user_form: Form<Login>,
+) -> Result<Redirect, Status> {
     let user_info = user_form.into_inner();
 
-    let new_user = match NewUser::new_from_plain(user_info.username, user_info.password) {
+    let new_user = match User::new_from_plain(user_info.username, user_info.password) {
         Some(new) => new,
-        None => { return Status::InternalServerError; }
+        None => {
+            return Err(Status::InternalServerError);
+        }
     };
 
-    match User::insert(new_user, &conn) {
-        Ok(_) => Status::Ok,
-        Err(err) => error_status(err)
+    match User::insert(&new_user, &conn) {
+        Ok(_) => {
+            cookies.add_private(Cookie::new("user_id", new_user.username));
+            Ok(Redirect::to("/"))
+        }
+        Err(err) => Err(error_status(err)),
     }
 }
 
 #[derive(FromForm)]
-pub struct ID {
-    id: usize
+pub struct Username {
+    username: String,
 }
 
-#[post("/delete", data = "<id_form>")]
-pub fn delete(conn: DbConn, id_form: Form<ID>) -> Status {
-    let id = id_form.into_inner().id;
-    match User::delete_by_id(id.try_into().unwrap(), &conn) {
+#[post("/delete", data = "<username_form>")]
+pub fn delete(conn: DbConn, username_form: Form<Username>) -> Status {
+    let username = username_form.into_inner().username;
+    match User::delete(&username, &conn) {
         Ok(_) => Status::Ok,
-        Err(err) => error_status(err)
+        Err(err) => error_status(err),
     }
 }
 
@@ -53,6 +58,6 @@ fn error_status(err: Error) -> Status {
     match err {
         Error::NotFound => Status::NotFound,
         Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => Status::Conflict,
-        _ => Status::InternalServerError
+        _ => Status::InternalServerError,
     }
 }

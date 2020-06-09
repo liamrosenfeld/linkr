@@ -5,6 +5,9 @@
   "[html]": {
     "editor.tabSize": 2
   },
+  "[hbs]": {
+    "editor.tabSize": 2
+  },
   "[javascript]": {
     "editor.tabSize": 4
   },

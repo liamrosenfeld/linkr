@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linkr</title>
+
+  <style>
+    th,
+    td {
+      border: 1px solid;
+    }
+
+    th {
+      font-weight: bold;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Linkr Dashboard</h1>
+
+  <div id="new">
+    <form action="/api/links/new" method="post" autocomplete="off">
+      <h2>Create New Links</h2>
+      <div>
+        <label for="short">this-domain.com/</label>
+        <input type="text" id="short" name="short" value="" />
+      </div>
+
+      <div>
+        <label for="short">original url:</label>
+        <input type="text" id="long" name="long" value="http://" />
+      </div>
+
+      <input type="submit" value="Create New" />
+    </form>
+
+    {{#if flash}}
+    <span class="{{flash.type}}">{{flash.msg}}</span>
+    {{/if}}
+  </div>
+
+  <div id="manage">
+    <h2>Manage Links</h2>
+
+    <div id="manage-table">
+      {{#if links}}
+      <table>
+        <thead>
+          <tr>
+            <th>Short</th>
+            <th>Long</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each links}}
+          <tr id="{{id}}-row">
+            <td id="{{id}}-short">{{short}}</td>
+            <td>
+              <span id="{{id}}-long">{{long}}</span>
+              <button id="{{id}}-update" onclick="updateButtonClicked({{id}})">Edit</button>
+            </td>
+            <td>
+              <button id="{{id}}-delete" onclick="removeByID({{id}})">Delete</button>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+      {{else}}
+      <span>No links added</span>
+      {{/if}}
+    </div>
+
+    <span id="manage-output"> </span>
+  </div>
+  <script type="text/javascript" src="/resource/index.js"></script>
+</body>
+
+</html>

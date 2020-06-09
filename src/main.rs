@@ -6,11 +6,9 @@ extern crate rocket;
 extern crate diesel;
 #[macro_use]
 extern crate serde_json;
-extern crate dotenv;
-extern crate rocket_contrib;
-extern crate serde;
 
 use dotenv::dotenv;
+use rocket_contrib::templates::Template;
 use std::env;
 
 mod catchers;
@@ -31,6 +29,7 @@ fn rocket() -> rocket::Rocket {
     let pool = db::init_pool(database_url);
     rocket::ignite()
         .manage(pool)
+        .attach(Template::fairing())
         .mount(
             "/",
             routes![

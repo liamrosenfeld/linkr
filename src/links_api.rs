@@ -1,6 +1,6 @@
 use rocket::http::Status;
 use rocket::request::Form;
-use rocket::response::Redirect;
+use rocket::response::{Flash, Redirect};
 
 use rocket_contrib::json::Json;
 use serde_json::Value;
@@ -27,24 +27,33 @@ pub fn lookup(conn: DbConn, short: String) -> Result<Redirect, Status> {
 
 const RESERVED_LINKS: [&str; 3] = ["api", "login", "resource"];
 
-#[post("/shorten", data = "<link_form>")]
-pub fn shorten(conn: DbConn, link_form: Form<NewLink>) -> Status {
+#[post("/new", data = "<link_form>")]
+pub fn shorten(conn: DbConn, link_form: Form<NewLink>) -> Flash<Redirect> {
     let link = link_form.into_inner();
 
-    // check that short is valid
+    // check if the short is alphanumeric
     if !link.short.chars().all(char::is_alphanumeric) {
-        return Status::UnprocessableEntity;
+        return Flash::error(
+            Redirect::to("/"),
+            "Shorts can only contain alphanumeric characters",
+        );
     }
+
+    // check if the short is reserved by this site
     if RESERVED_LINKS
         .iter()
         .any(|&reserved| reserved == link.short)
     {
-        return Status::UnprocessableEntity;
+        return Flash::error(Redirect::to("/"), "That short is reserved by this website");
     }
 
+    // send database request and respond accordingly
     match Link::insert(link, &conn) {
-        Ok(_) => Status::Ok,
-        Err(err) => error_status(err),
+        Ok(_) => Flash::success(Redirect::to("/"), "Link created!"),
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
+            Flash::error(Redirect::to("/"), "That short is already in use")
+        }
+        Err(_) => Flash::error(Redirect::to("/"), "There was an internal server error"),
     }
 }
 

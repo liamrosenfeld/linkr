@@ -5,6 +5,7 @@ CREATE TABLE links(
 );
 
 CREATE TABLE users(
-  username TEXT PRIMARY KEY,
+  id       SERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
   pw_hash  TEXT NOT NULL
 );

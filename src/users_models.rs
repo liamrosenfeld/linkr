@@ -8,16 +8,24 @@ use crate::schema::users::dsl::users as all_users;
 
 use serde::Serialize;
 
-#[derive(Queryable, Serialize, Insertable, FromForm)]
-#[table_name = "users"]
+#[derive(Queryable, Serialize, FromForm)]
+
 pub struct User {
+    pub id: i32,
+    pub username: String,
+    pub pw_hash: String,
+}
+
+#[derive(Insertable)]
+#[table_name = "users"]
+pub struct NewUser {
     pub username: String,
     pub pw_hash: String,
 }
 
 impl User {
-    pub fn get(username: &str, conn: &PgConnection) -> QueryResult<User> {
-        all_users.find(username).get_result::<User>(conn)
+    pub fn get(id: i32, conn: &PgConnection) -> QueryResult<User> {
+        all_users.find(id).get_result::<User>(conn)
     }
 
     pub fn all(conn: &PgConnection) -> QueryResult<Vec<User>> {
@@ -26,14 +34,16 @@ impl User {
             .get_results::<User>(conn)
     }
 
-    pub fn insert(user: &User, conn: &PgConnection) -> QueryResult<usize> {
-        diesel::insert_into(users::table).values(user).execute(conn)
+    pub fn insert(user: &NewUser, conn: &PgConnection) -> QueryResult<User> {
+        diesel::insert_into(users::table)
+            .values(user)
+            .get_result::<User>(conn)
     }
 
-    pub fn delete(username: &str, conn: &PgConnection) -> QueryResult<usize> {
-        if User::get(username, conn).is_err() {
+    pub fn delete(id: i32, conn: &PgConnection) -> QueryResult<usize> {
+        if User::get(id, conn).is_err() {
             return Err(Error::NotFound);
         };
-        diesel::delete(all_users.find(username)).execute(conn)
+        diesel::delete(all_users.find(id)).execute(conn)
     }
 }

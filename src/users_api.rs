@@ -6,7 +6,7 @@ use diesel::result::DatabaseErrorKind;
 use diesel::result::Error;
 
 use crate::db::Conn as DbConn;
-use crate::users_models::User;
+use crate::users_models::{NewUser, User};
 
 #[derive(FromForm)]
 pub struct Login {
@@ -22,7 +22,7 @@ pub fn new(
 ) -> Result<Redirect, Status> {
     let user_info = user_form.into_inner();
 
-    let new_user = match User::new_from_plain(user_info.username, user_info.password) {
+    let new_user = match NewUser::new_from_plain(user_info.username, user_info.password) {
         Some(new) => new,
         None => {
             return Err(Status::InternalServerError);
@@ -30,8 +30,8 @@ pub fn new(
     };
 
     match User::insert(&new_user, &conn) {
-        Ok(_) => {
-            cookies.add_private(Cookie::new("user_id", new_user.username));
+        Ok(new_user) => {
+            cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
             Ok(Redirect::to("/"))
         }
         Err(err) => Err(error_status(err)),
@@ -39,14 +39,14 @@ pub fn new(
 }
 
 #[derive(FromForm)]
-pub struct Username {
-    username: String,
+pub struct ID {
+    id: i32,
 }
 
-#[post("/delete", data = "<username_form>")]
-pub fn delete(conn: DbConn, username_form: Form<Username>) -> Status {
-    let username = username_form.into_inner().username;
-    match User::delete(&username, &conn) {
+#[post("/delete", data = "<id_form>")]
+pub fn delete(conn: DbConn, id_form: Form<ID>) -> Status {
+    let id = id_form.into_inner().id;
+    match User::delete(id, &conn) {
         Ok(_) => Status::Ok,
         Err(err) => error_status(err),
     }

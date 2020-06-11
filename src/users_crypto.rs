@@ -1,10 +1,10 @@
 use scrypt;
 
-use crate::users_models::User;
+use crate::users_models::{NewUser, User};
 
-impl User {
-    pub fn new_from_plain(username: String, password: String) -> Option<User> {
-        let param = scrypt::ScryptParams::new(15, 8, 1).expect("Default Param Issue");
+impl NewUser {
+    pub fn new_from_plain(username: String, password: String) -> Option<NewUser> {
+        let param = scrypt::ScryptParams::recommended();
 
         // scrypt_simple includes a salt
         let pw_hash = match scrypt::scrypt_simple(&password, &param) {
@@ -14,7 +14,7 @@ impl User {
             }
         };
 
-        let new_user = User { username, pw_hash };
+        let new_user = NewUser { username, pw_hash };
 
         Some(new_user)
     }

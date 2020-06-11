@@ -27,6 +27,12 @@
 </head>
 
 <body>
+  <header>
+    {{#if user}}
+    <p>user: {{user.name}}</p>
+    {{/if}}
+  </header>
+
   <h1>Linkr Dashboard</h1>
 
   <div id="new">

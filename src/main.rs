@@ -15,6 +15,7 @@ mod catchers;
 mod db;
 mod links_api;
 mod links_models;
+mod pages;
 mod schema;
 mod static_files;
 mod users_api;
@@ -35,8 +36,8 @@ fn rocket() -> rocket::Rocket {
             routes![
                 links_api::lookup,
                 static_files::all,
-                static_files::index,
-                static_files::login,
+                pages::index,
+                pages::login,
                 static_files::favicon
             ],
         )

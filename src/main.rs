@@ -35,10 +35,11 @@ fn rocket() -> rocket::Rocket {
             "/",
             routes![
                 links_api::lookup,
-                static_files::all,
                 pages::index,
+                pages::signup,
                 pages::login,
-                static_files::favicon
+                static_files::favicon,
+                static_files::all_resources,
             ],
         )
         .mount(
@@ -50,7 +51,15 @@ fn rocket() -> rocket::Rocket {
                 links_api::update
             ],
         )
-        .mount("/api/users/", routes![users_api::new, users_api::delete])
+        .mount(
+            "/api/users/",
+            routes![
+                users_api::new,
+                users_api::login,
+                users_api::logout,
+                users_api::delete
+            ],
+        )
         .register(catchers![catchers::not_found, catchers::internal_error])
 }
 

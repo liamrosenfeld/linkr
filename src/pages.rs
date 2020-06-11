@@ -1,6 +1,3 @@
-use rocket::response::NamedFile;
-use std::io;
-
 use crate::db::Conn as DbConn;
 use crate::links_models::Link;
 use crate::users_models::User;
@@ -55,6 +52,27 @@ pub fn index(
 }
 
 #[get("/signup")]
-pub fn login() -> io::Result<NamedFile> {
-    NamedFile::open("public/signup.html")
+pub fn signup(flash: Option<FlashMessage<'_, '_>>) -> Template {
+    template_with_flash("signup", flash)
+}
+
+#[get("/login")]
+pub fn login(flash: Option<FlashMessage<'_, '_>>) -> Template {
+    template_with_flash("login", flash)
+}
+
+fn template_with_flash(template: &'static str, flash: Option<FlashMessage<'_, '_>>) -> Template {
+    let flash_json = match flash {
+        Some(flash) => json!({
+            "type": flash.name(),
+            "msg": flash.msg(),
+        }),
+        None => json!(null),
+    };
+
+    let context = json!({
+        "flash": flash_json,
+    });
+
+    Template::render(template, &context)
 }

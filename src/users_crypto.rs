@@ -18,8 +18,10 @@ impl NewUser {
 
         Some(new_user)
     }
+}
 
-    pub fn verify(user: User, password: String) -> bool {
-        scrypt::scrypt_check(&password, &user.pw_hash).is_ok()
+impl User {
+    pub fn verify(self: &Self, password: &str) -> bool {
+        scrypt::scrypt_check(password, &self.pw_hash).is_ok()
     }
 }

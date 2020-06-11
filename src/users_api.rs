@@ -1,6 +1,6 @@
 use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::Form;
-use rocket::response::Redirect;
+use rocket::response::{Flash, Redirect};
 
 use diesel::result::DatabaseErrorKind;
 use diesel::result::Error;
@@ -15,40 +15,63 @@ pub struct Login {
 }
 
 #[post("/new", data = "<user_form>")]
-pub fn new(
-    mut cookies: Cookies<'_>,
-    conn: DbConn,
-    user_form: Form<Login>,
-) -> Result<Redirect, Status> {
+pub fn new(mut cookies: Cookies<'_>, conn: DbConn, user_form: Form<Login>) -> Flash<Redirect> {
     let user_info = user_form.into_inner();
 
     let new_user = match NewUser::new_from_plain(user_info.username, user_info.password) {
         Some(new) => new,
-        None => {
-            return Err(Status::InternalServerError);
-        }
+        None => return Flash::error(Redirect::to("/signup"), "An internal server error occurred"),
     };
 
     match User::insert(&new_user, &conn) {
         Ok(new_user) => {
             cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
-            Ok(Redirect::to("/"))
+            Flash::success(Redirect::to("/"), "Account created")
         }
-        Err(err) => Err(error_status(err)),
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
+            Flash::error(Redirect::to("/signup"), "Username already taken")
+        }
+        Err(_) => Flash::error(Redirect::to("/signup"), "An internal server error occurred"),
     }
 }
 
-#[derive(FromForm)]
-pub struct ID {
-    id: i32,
+#[post("/login", data = "<user_form>")]
+pub fn login(mut cookies: Cookies<'_>, conn: DbConn, user_form: Form<Login>) -> Flash<Redirect> {
+    let login = user_form.into_inner();
+    match User::get_by_name(&login.username, &conn) {
+        Ok(selected_user) => {
+            if selected_user.verify(&login.password) {
+                cookies.add_private(Cookie::new("user_id", selected_user.id.to_string()));
+                return Flash::success(Redirect::to("/"), "Logged in");
+            } else {
+                return Flash::error(Redirect::to("/login"), "Invalid username/password");
+            }
+        }
+        Err(_) => return Flash::error(Redirect::to("/login"), "Invalid username/password"),
+    };
 }
 
-#[post("/delete", data = "<id_form>")]
-pub fn delete(conn: DbConn, id_form: Form<ID>) -> Status {
-    let id = id_form.into_inner().id;
-    match User::delete(id, &conn) {
-        Ok(_) => Status::Ok,
-        Err(err) => error_status(err),
+#[get("/logout")]
+pub fn logout(mut cookies: Cookies<'_>) -> Redirect {
+    cookies.remove_private(Cookie::named("user_id"));
+    Redirect::to("/login")
+}
+
+#[delete("/delete")]
+pub fn delete(mut cookies: Cookies<'_>, conn: DbConn) -> Status {
+    let user_id = cookies
+        .get_private("user_id")
+        .and_then(|cookie| cookie.value().parse::<i32>().ok());
+
+    match user_id {
+        Some(id) => match User::delete(id, &conn) {
+            Ok(_) => {
+                cookies.remove_private(Cookie::named("user_id"));
+                Status::Ok
+            }
+            Err(err) => error_status(err),
+        },
+        None => Status::Unauthorized,
     }
 }
 

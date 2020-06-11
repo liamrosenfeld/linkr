@@ -8,6 +8,6 @@ pub fn favicon() -> io::Result<NamedFile> {
 }
 
 #[get("/resource/<file..>", rank = 2)]
-pub fn all(file: PathBuf) -> Option<NamedFile> {
+pub fn all_resources(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("public/").join(file)).ok()
 }

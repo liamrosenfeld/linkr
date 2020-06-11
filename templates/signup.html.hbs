@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linkr</title>
+
+  <style>
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Sign Up</h1>
+
+  <form action="/api/users/new" method="post">
+    <label for="username">username</label>
+    <input type="text" autocomplete="username" name="username" id="username" value="" />
+    <label for="password">password</label>
+    <input type="password" autocomplete="new-password" name="password" id="password" value="" />
+    <input type="submit" value="Create Account" />
+  </form>
+
+  {{#if flash}}
+  <span class="{{flash.type}}">{{flash.msg}}</span>
+  {{/if}}
+</body>
+
+</html>

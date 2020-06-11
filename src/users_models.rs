@@ -28,10 +28,13 @@ impl User {
         all_users.find(id).get_result::<User>(conn)
     }
 
-    pub fn all(conn: &PgConnection) -> QueryResult<Vec<User>> {
+    pub fn get_by_name(name: &str, conn: &PgConnection) -> QueryResult<User> {
+        use crate::schema::users::dsl::username;
+
         all_users
-            .order(users::username.desc())
-            .get_results::<User>(conn)
+            .distinct()
+            .filter(username.eq(name))
+            .get_result::<User>(conn)
     }
 
     pub fn insert(user: &NewUser, conn: &PgConnection) -> QueryResult<User> {

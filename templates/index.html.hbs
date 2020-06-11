@@ -30,6 +30,14 @@
   <header>
     {{#if user}}
     <p>user: {{user.name}}</p>
+
+    <form method="get" action="/api/users/logout">
+      <input type="submit" id="logout" value="log out">
+    </form>
+
+    {{else}}
+    <a href="/login">Login</a>
+    <a href="/signup">Sign Up</a>
     {{/if}}
   </header>
 

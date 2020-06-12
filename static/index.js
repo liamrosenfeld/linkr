@@ -1,22 +1,22 @@
 /* ------------------------- functions run directly ------------------------- */
 
 /**
- * @param {number} id
+ * @param {string} short
  */
-function removeByID(id) {
+function removeByID(short) {
     const options = {
         method: "POST",
         headers: {
             "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: "id=" + id,
+        body: "short=" + short,
     };
     fetch("/api/links/delete/", options).then((response) => {
         switch (response.status) {
             case 200:
                 document.getElementById("manage-output").textContent =
                     "Shortcut deleted!";
-                document.getElementById(`${id}-row`).remove();
+                document.getElementById(`${short}-row`).remove();
                 break;
             case 404:
                 document.getElementById("manage-output").textContent =
@@ -35,27 +35,27 @@ function removeByID(id) {
 }
 
 /**
- * @param {number} id
+ * @param {string} short
  */
-function updateButtonClicked(id) {
-    let button = document.getElementById(`${id}-update`);
-    let longElement = document.getElementById(`${id}-long`);
+function updateButtonClicked(short) {
+    let button = document.getElementById(`${short}-update`);
+    let longElement = document.getElementById(`${short}-long`);
 
     if (button.textContent === "Edit") {
         let long = longElement.textContent;
         let input = document.createElement("input");
         input.value = long;
         longElement.replaceWith(input);
-        input.id = `${id}-long`;
+        input.id = `${short}-long`;
         button.textContent = "Save";
 
     } else if (button.textContent === "Save") {
         let long = longElement.value;
-        sendUpdate(id, long).then(success => {
+        sendUpdate(short, long).then(success => {
             if (success) {
                 let text = document.createElement("span");
                 text.textContent = long;
-                text.id = `${id}-long`; // has to be after replace
+                text.id = `${short}-long`; // has to be after replace
                 longElement.replaceWith(text);
                 button.textContent = "Edit";
             }
@@ -69,11 +69,11 @@ function updateButtonClicked(id) {
 /* ------------------------- functions for functions ------------------------ */
 
 /**
- * @param {number} id
+ * @param {string} short
  * @param {string} newLong
  */
-async function sendUpdate(id, newLong) {
-    const data = { id: id, long: newLong };
+async function sendUpdate(short, newLong) {
+    const data = { short: short, long: newLong };
     const dataEncoded = new URLSearchParams(data).toString();
     const options = {
         method: "POST",

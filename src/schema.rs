@@ -1,8 +1,9 @@
 table! {
-    links (id) {
-        id -> Int4,
+    links (short) {
         short -> Text,
         long -> Text,
+        created_at -> Timestamptz,
+        created_by -> Int4,
     }
 }
 

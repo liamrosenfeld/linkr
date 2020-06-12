@@ -1,7 +1,8 @@
 CREATE TABLE links(
-  id    SERIAL PRIMARY KEY,
-  short TEXT NOT NULL UNIQUE,
-  long  TEXT NOT NULL
+  short TEXT PRIMARY KEY,
+  long  TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  created_by INTEGER NOT NULL
 );
 
 CREATE TABLE users(

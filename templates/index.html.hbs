@@ -74,19 +74,23 @@
           <tr>
             <th>Short</th>
             <th>Long</th>
+            <th>Created On</th>
+            <th>Created By</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {{#each links}}
-          <tr id="{{id}}-row">
-            <td id="{{id}}-short">{{short}}</td>
+          <tr id="{{short}}-row">
+            <td id="{{short}}-short">{{short}}</td>
             <td>
-              <span id="{{id}}-long">{{long}}</span>
-              <button id="{{id}}-update" onclick="updateButtonClicked({{id}})">Edit</button>
+              <span id="{{short}}-long">{{long}}</span>
+              <button id="{{short}}-update" onclick="updateButtonClicked('{{short}}')">Edit</button>
             </td>
+            <td id="{{short}}-at">{{created_at}}</td>
+            <td id="{{short}}-by">{{created_by}}</td>
             <td>
-              <button id="{{id}}-delete" onclick="removeByID({{id}})">Delete</button>
+              <button id="{{short}}-delete" onclick="removeByID('{{short}}')">Delete</button>
             </td>
           </tr>
           {{/each}}

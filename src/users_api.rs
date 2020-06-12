@@ -5,6 +5,7 @@ use rocket::response::{Flash, Redirect};
 use diesel::result::DatabaseErrorKind;
 use diesel::result::Error;
 
+use crate::auth::Auth;
 use crate::db::Conn as DbConn;
 use crate::users_models::{NewUser, User};
 
@@ -58,29 +59,13 @@ pub fn logout(mut cookies: Cookies<'_>) -> Redirect {
 }
 
 #[delete("/delete")]
-pub fn delete(mut cookies: Cookies<'_>, conn: DbConn) -> Status {
-    let user_id = cookies
-        .get_private("user_id")
-        .and_then(|cookie| cookie.value().parse::<i32>().ok());
-
-    match user_id {
-        Some(id) => match User::delete(id, &conn) {
-            Ok(_) => {
-                cookies.remove_private(Cookie::named("user_id"));
-                Status::Ok
-            }
-            Err(err) => error_status(err),
-        },
-        None => Status::Unauthorized,
-    }
-}
-
-/* --------------------------------- helpers -------------------------------- */
-
-fn error_status(err: Error) -> Status {
-    match err {
-        Error::NotFound => Status::NotFound,
-        Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => Status::Conflict,
-        _ => Status::InternalServerError,
+pub fn delete(auth: Auth, mut cookies: Cookies<'_>, conn: DbConn) -> Status {
+    match User::delete(auth.user_id, &conn) {
+        Ok(_) => {
+            cookies.remove_private(Cookie::named("user_id"));
+            Status::Ok
+        }
+        Err(Error::NotFound) => Status::Unauthorized,
+        Err(_) => Status::InternalServerError,
     }
 }

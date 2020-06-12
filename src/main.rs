@@ -11,6 +11,7 @@ use dotenv::dotenv;
 use rocket_contrib::templates::Template;
 use std::env;
 
+mod auth;
 mod catchers;
 mod db;
 mod links_api;
@@ -23,11 +24,12 @@ mod users_crypto;
 mod users_models;
 
 fn rocket() -> rocket::Rocket {
+    // create db pool from .env
     dotenv().ok();
-
     let database_url = env::var("DATABASE_URL").expect("set DATABASE_URL");
-
     let pool = db::init_pool(database_url);
+
+    // setup rocket
     rocket::ignite()
         .manage(pool)
         .attach(Template::fairing())
@@ -60,7 +62,11 @@ fn rocket() -> rocket::Rocket {
                 users_api::delete
             ],
         )
-        .register(catchers![catchers::not_found, catchers::internal_error])
+        .register(catchers![
+            catchers::not_found,
+            catchers::internal_error,
+            catchers::unauthorized
+        ])
 }
 
 fn main() {

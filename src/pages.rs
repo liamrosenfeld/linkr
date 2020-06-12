@@ -1,16 +1,19 @@
+use crate::auth::Auth;
 use crate::db::Conn as DbConn;
 use crate::links_models::Link;
 use crate::users_models::User;
 
-use rocket::http::{Cookies, Status};
+use diesel::result::Error;
+use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::FlashMessage;
+use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
 
 #[get("/")]
 pub fn index(
     conn: DbConn,
     flash: Option<FlashMessage<'_, '_>>,
-    mut cookies: Cookies,
+    auth: Auth,
 ) -> Result<Template, Status> {
     // links for table
     let links = match Link::all(&conn) {
@@ -27,19 +30,15 @@ pub fn index(
         None => json!(null),
     };
 
-    // user from cookie
-    let user_id = cookies
-        .get_private("user_id")
-        .and_then(|cookie| cookie.value().parse::<i32>().ok());
+    // user from auth (from cookie)
+    let user = User::get(auth.user_id, &conn);
 
-    let user_info = match user_id {
-        Some(id) => match User::get(id, &conn) {
-            Ok(user) => json!({
-                "name": user.username
-            }),
-            Err(_) => json!(null),
-        },
-        None => json!(null),
+    let user_info = match user {
+        Ok(user) => json!({
+            "name": user.username
+        }),
+        Err(Error::NotFound) => return Err(Status::Unauthorized),
+        Err(_) => return Err(Status::InternalServerError),
     };
 
     // render template
@@ -57,8 +56,22 @@ pub fn signup(flash: Option<FlashMessage<'_, '_>>) -> Template {
 }
 
 #[get("/login")]
-pub fn login(flash: Option<FlashMessage<'_, '_>>) -> Template {
-    template_with_flash("login", flash)
+pub fn login(
+    auth: Option<Auth>,
+    mut cookies: Cookies,
+    flash: Option<FlashMessage<'_, '_>>,
+    conn: DbConn,
+) -> Result<Template, Redirect> {
+    match auth {
+        Some(auth) => match User::get(auth.user_id, &conn) {
+            Ok(_) => Err(Redirect::to("/")),
+            Err(_) => {
+                cookies.remove_private(Cookie::named("user_id"));
+                Ok(template_with_flash("login", flash))
+            }
+        },
+        None => Ok(template_with_flash("login", flash)),
+    }
 }
 
 fn template_with_flash(template: &'static str, flash: Option<FlashMessage<'_, '_>>) -> Template {

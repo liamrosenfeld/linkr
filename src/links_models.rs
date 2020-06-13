@@ -29,6 +29,15 @@ impl Link {
             .get_results::<Link>(conn)
     }
 
+    pub fn all_for_user(user_id: i32, conn: &PgConnection) -> QueryResult<Vec<Link>> {
+        use crate::schema::links::dsl::created_by;
+
+        all_links
+            .filter(created_by.eq(user_id))
+            .order(links::created_at.desc())
+            .get_results::<Link>(conn)
+    }
+
     pub fn update(short: &str, new_long: &str, conn: &PgConnection) -> QueryResult<Link> {
         use crate::schema::links::dsl::long;
 

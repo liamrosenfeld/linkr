@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linkr</title>
+
+  <style>
+    th,
+    td {
+      border: 1px solid;
+    }
+
+    th {
+      font-weight: bold;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+
+  {{> partials/header }}
+
+  <div id="manage">
+    <h1>Manage All Links</h1>
+
+    <div id="manage-table">
+      {{#if links}}
+      <table>
+        <thead>
+          <tr>
+            <th>Short</th>
+            <th>Long</th>
+            <th>Created On</th>
+            <th>Created By</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each links}}
+          <tr id="{{short}}-row">
+            <td id="{{short}}-short">{{short}}</td>
+            <td>
+              <span id="{{short}}-long">{{long}}</span>
+              <button id="{{short}}-update" onclick="updateButtonClicked('{{short}}')">Edit</button>
+            </td>
+            <td id="{{short}}-at">{{created_at}}</td>
+            <td id="{{short}}-by">{{created_by}}</td>
+            <td>
+              <button id="{{short}}-delete" onclick="removeByID('{{short}}')">Delete</button>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+      {{else}}
+      <span>No links added</span>
+      {{/if}}
+    </div>
+
+    <span id="manage-output"> </span>
+  </div>
+  <script type="text/javascript" src="/resource/index.js"></script>
+</body>
+
+</html>

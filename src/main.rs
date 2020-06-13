@@ -40,6 +40,7 @@ fn rocket() -> rocket::Rocket {
                 pages::index,
                 pages::signup,
                 pages::login,
+                pages::manage_links,
                 static_files::favicon,
                 static_files::all_resources,
             ],

@@ -27,19 +27,8 @@
 </head>
 
 <body>
-  <header>
-    {{#if user}}
-    <p>user: {{user.name}}</p>
 
-    <form method="get" action="/api/users/logout">
-      <input type="submit" id="logout" value="log out">
-    </form>
-
-    {{else}}
-    <a href="/login">Login</a>
-    <a href="/signup">Sign Up</a>
-    {{/if}}
-  </header>
+  {{> partials/header }}
 
   <h1>Linkr Dashboard</h1>
 
@@ -65,7 +54,7 @@
   </div>
 
   <div id="manage">
-    <h2>Manage Links</h2>
+    <h2>Your Links</h2>
 
     <div id="manage-table">
       {{#if links}}
@@ -75,7 +64,6 @@
             <th>Short</th>
             <th>Long</th>
             <th>Created On</th>
-            <th>Created By</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -88,7 +76,6 @@
               <button id="{{short}}-update" onclick="updateButtonClicked('{{short}}')">Edit</button>
             </td>
             <td id="{{short}}-at">{{created_at}}</td>
-            <td id="{{short}}-by">{{created_by}}</td>
             <td>
               <button id="{{short}}-delete" onclick="removeByID('{{short}}')">Delete</button>
             </td>

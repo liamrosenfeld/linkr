@@ -77,6 +77,33 @@ pub fn manage_links(conn: DbConn, auth: Auth) -> Result<Template, Status> {
     Ok(Template::render("pages/manage_links", &context))
 }
 
+#[get("/manage_users")]
+pub fn manage_users(conn: DbConn, auth: Auth) -> Result<Template, Status> {
+    // links for table
+    let users = match User::all(&conn) {
+        Ok(users) => users,
+        Err(_) => return Err(Status::InternalServerError),
+    };
+
+    // user from auth (from cookie)
+    let user = User::get(auth.user_id, &conn);
+
+    let user_info = match user {
+        Ok(user) => json!({
+            "name": user.username
+        }),
+        Err(Error::NotFound) => return Err(Status::Unauthorized),
+        Err(_) => return Err(Status::InternalServerError),
+    };
+
+    // render template
+    let context = json!({
+        "users": users,
+        "user": user_info
+    });
+    Ok(Template::render("pages/manage_users", &context))
+}
+
 #[get("/signup")]
 pub fn signup(flash: Option<FlashMessage<'_, '_>>) -> Template {
     template_with_flash("signup", flash)

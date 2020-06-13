@@ -37,6 +37,10 @@ impl User {
             .get_result::<User>(conn)
     }
 
+    pub fn all(conn: &PgConnection) -> QueryResult<Vec<User>> {
+        all_users.order(users::id.desc()).get_results::<User>(conn)
+    }
+
     pub fn insert(user: &NewUser, conn: &PgConnection) -> QueryResult<User> {
         diesel::insert_into(users::table)
             .values(user)

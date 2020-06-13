@@ -3,7 +3,7 @@
 /**
  * @param {string} short
  */
-function removeByID(short) {
+function removeByShort(short) {
     const options = {
         method: "POST",
         headers: {

@@ -58,8 +58,32 @@ pub fn logout(mut cookies: Cookies<'_>) -> Redirect {
     Redirect::to("/login")
 }
 
-#[delete("/delete")]
-pub fn delete(auth: Auth, mut cookies: Cookies<'_>, conn: DbConn) -> Status {
+#[derive(FromForm)]
+pub struct ID {
+    id: i32,
+}
+
+#[post("/delete", data = "<id_form>", rank = 1)]
+pub fn delete_by_id(id_form: Form<ID>, auth: Auth, conn: DbConn) -> Status {
+    let id = id_form.into_inner().id;
+
+    if id == auth.user_id {
+        return Status::Conflict;
+    }
+
+    match User::get(auth.user_id, &conn) {
+        Ok(_) => match User::delete(id, &conn) {
+            Ok(_) => Status::Ok,
+            Err(Error::NotFound) => Status::NotFound,
+            Err(_) => Status::InternalServerError,
+        },
+        Err(Error::NotFound) => Status::Unauthorized,
+        Err(_) => Status::InternalServerError,
+    }
+}
+
+#[delete("/delete", rank = 2)]
+pub fn delete_current(auth: Auth, mut cookies: Cookies<'_>, conn: DbConn) -> Status {
     match User::delete(auth.user_id, &conn) {
         Ok(_) => {
             cookies.remove_private(Cookie::named("user_id"));

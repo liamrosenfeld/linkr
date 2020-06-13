@@ -15,14 +15,6 @@
     th {
       font-weight: bold;
     }
-
-    .success {
-      color: green;
-    }
-
-    .error {
-      color: red;
-    }
   </style>
 </head>
 
@@ -56,7 +48,7 @@
             <td id="{{short}}-at">{{created_at}}</td>
             <td id="{{short}}-by">{{created_by}}</td>
             <td>
-              <button id="{{short}}-delete" onclick="removeByID('{{short}}')">Delete</button>
+              <button id="{{short}}-delete" onclick="removeByShort('{{short}}')">Delete</button>
             </td>
           </tr>
           {{/each}}
@@ -69,7 +61,7 @@
 
     <span id="manage-output"> </span>
   </div>
-  <script type="text/javascript" src="/resource/index.js"></script>
+  <script type="text/javascript" src="/resource/links_table.js"></script>
 </body>
 
 </html>

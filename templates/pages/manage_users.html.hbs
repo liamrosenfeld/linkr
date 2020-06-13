@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linkr</title>
+
+  <style>
+    th,
+    td {
+      border: 1px solid;
+    }
+
+    th {
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  {{> partials/header }}
+
+  <div id="manage">
+    <h1>Manage Users</h1>
+
+    <div id="manage-table">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each users}}
+          <tr id="{{id}}-row">
+            <td id="{{id}}-id">{{id}}</td>
+            <td id="{{id}}-name">{{username}}</td>
+            <td>
+              <button id="{{id}}-delete" onclick="removeByID('{{id}}')">Delete</button>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+
+    <span id="manage-output"> </span>
+  </div>
+  <script type="text/javascript" src="/resource/users_table.js"></script>
+</body>
+
+</html>

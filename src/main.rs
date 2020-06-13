@@ -41,6 +41,7 @@ fn rocket() -> rocket::Rocket {
                 pages::signup,
                 pages::login,
                 pages::manage_links,
+                pages::manage_users,
                 static_files::favicon,
                 static_files::all_resources,
             ],
@@ -60,7 +61,8 @@ fn rocket() -> rocket::Rocket {
                 users_api::new,
                 users_api::login,
                 users_api::logout,
-                users_api::delete
+                users_api::delete_current,
+                users_api::delete_by_id
             ],
         )
         .register(catchers![

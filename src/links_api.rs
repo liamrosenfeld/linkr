@@ -32,7 +32,15 @@ pub struct NewLink {
     long: String,
 }
 
-const RESERVED_LINKS: [&str; 3] = ["api", "login", "resource"];
+const RESERVED_LINKS: [&str; 7] = [
+    "api",
+    "login",
+    "resource",
+    "new_user",
+    "setup",
+    "manage_links",
+    "manage_users",
+];
 
 #[post("/new", data = "<link_form>")]
 pub fn shorten(
@@ -66,6 +74,16 @@ pub fn shorten(
         ));
     }
 
+    // check that the long is a valid url
+    let prefix_correct =
+        new_link.long.starts_with("http://") || new_link.long.starts_with("https://");
+    if !prefix_correct {
+        return Ok(Flash::error(
+            Redirect::to("/"),
+            "That long does not begin with https:// or http://",
+        ));
+    }
+
     // create link to insert
     let link = Link {
         short: new_link.short,
@@ -95,12 +113,17 @@ pub struct Short {
 
 #[post("/delete", data = "<short_form>")]
 pub fn delete(conn: DbConn, short_form: Form<Short>, auth: Auth) -> Status {
-    let _user = match User::get(auth.user_id, &conn) {
+    let user = match User::get(auth.user_id, &conn) {
         Ok(user) => user,
         Err(_) => return Status::Unauthorized,
     };
 
     let short = short_form.into_inner().short;
+
+    match check_can_edit(&user, &short, &conn) {
+        Ok(_) => {}
+        Err(err) => return err,
+    }
 
     match Link::delete(&short, &conn) {
         Ok(_) => Status::Ok,
@@ -110,17 +133,38 @@ pub fn delete(conn: DbConn, short_form: Form<Short>, auth: Auth) -> Status {
 
 #[post("/update", data = "<update_form>")]
 pub fn update(conn: DbConn, update_form: Form<NewLink>, auth: Auth) -> Status {
-    let _user = match User::get(auth.user_id, &conn) {
+    let user = match User::get(auth.user_id, &conn) {
         Ok(user) => user,
         Err(_) => return Status::Unauthorized,
     };
 
     let update = update_form.into_inner();
 
+    match check_can_edit(&user, &update.short, &conn) {
+        Ok(_) => {}
+        Err(err) => return err,
+    }
+
     match Link::update(&update.short, &update.long, &conn) {
         Ok(_) => Status::Ok,
         Err(err) => error_status(err),
     }
+}
+
+fn check_can_edit(user: &User, short: &str, conn: &DbConn) -> Result<(), Status> {
+    if !user.manage_links {
+        let link_user = match Link::get(&short, &conn) {
+            Ok(link) => link.created_by,
+            Err(Error::NotFound) => return Err(Status::NotFound),
+            Err(_) => return Err(Status::InternalServerError),
+        };
+
+        if link_user != user.id {
+            return Err(Status::Forbidden);
+        }
+    }
+
+    Ok(())
 }
 
 #[get("/all")]

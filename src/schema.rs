@@ -12,10 +12,9 @@ table! {
         id -> Int4,
         username -> Text,
         pw_hash -> Text,
+        manage_links -> Bool,
+        manage_users -> Bool,
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    links,
-    users,
-);
+allow_tables_to_appear_in_same_query!(links, users,);

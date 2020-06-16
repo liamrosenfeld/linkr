@@ -1,22 +1,28 @@
 use scrypt;
 
-use crate::users_models::{NewUser, User};
+use crate::users_api::NewUser;
+use crate::users_models::{InsertableUser, User};
 
-impl NewUser {
-    pub fn new_from_plain(username: String, password: String) -> Option<NewUser> {
+impl InsertableUser {
+    pub fn new_from_plain(new_user: NewUser) -> Option<InsertableUser> {
         let param = scrypt::ScryptParams::recommended();
 
         // scrypt_simple includes a salt
-        let pw_hash = match scrypt::scrypt_simple(&password, &param) {
+        let pw_hash = match scrypt::scrypt_simple(&new_user.password, &param) {
             Ok(hash) => hash,
             Err(_) => {
                 return None;
             }
         };
 
-        let new_user = NewUser { username, pw_hash };
+        let insertable_user = InsertableUser {
+            username: new_user.username,
+            pw_hash,
+            manage_links: new_user.manage_links,
+            manage_users: new_user.manage_users,
+        };
 
-        Some(new_user)
+        Some(insertable_user)
     }
 }
 

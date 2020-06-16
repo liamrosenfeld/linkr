@@ -7,19 +7,21 @@ use diesel::result::Error;
 
 use crate::auth::Auth;
 use crate::db::Conn as DbConn;
-use crate::users_models::{NewUser, User};
+use crate::users_models::{InsertableUser, User};
 
 #[derive(FromForm)]
-pub struct Login {
-    username: String,
-    password: String,
+pub struct NewUser {
+    pub username: String,
+    pub password: String,
+    pub manage_links: bool,
+    pub manage_users: bool,
 }
 
 #[post("/new", data = "<user_form>")]
-pub fn new(mut cookies: Cookies<'_>, conn: DbConn, user_form: Form<Login>) -> Flash<Redirect> {
+pub fn new(mut cookies: Cookies<'_>, conn: DbConn, user_form: Form<NewUser>) -> Flash<Redirect> {
     let user_info = user_form.into_inner();
 
-    let new_user = match NewUser::new_from_plain(user_info.username, user_info.password) {
+    let new_user = match InsertableUser::new_from_plain(user_info) {
         Some(new) => new,
         None => return Flash::error(Redirect::to("/signup"), "An internal server error occurred"),
     };
@@ -34,6 +36,12 @@ pub fn new(mut cookies: Cookies<'_>, conn: DbConn, user_form: Form<Login>) -> Fl
         }
         Err(_) => Flash::error(Redirect::to("/signup"), "An internal server error occurred"),
     }
+}
+
+#[derive(FromForm)]
+pub struct Login {
+    username: String,
+    password: String,
 }
 
 #[post("/login", data = "<user_form>")]
@@ -68,7 +76,7 @@ pub fn delete_by_id(id_form: Form<ID>, auth: Auth, conn: DbConn) -> Status {
     let id = id_form.into_inner().id;
 
     if id == auth.user_id {
-        return Status::Conflict;
+        return Status::MethodNotAllowed;
     }
 
     match User::get(auth.user_id, &conn) {

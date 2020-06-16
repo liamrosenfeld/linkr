@@ -38,7 +38,8 @@ fn rocket() -> rocket::Rocket {
             routes![
                 links_api::lookup,
                 pages::index,
-                pages::signup,
+                pages::new_user,
+                pages::setup,
                 pages::login,
                 pages::manage_links,
                 pages::manage_users,

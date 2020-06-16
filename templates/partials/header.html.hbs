@@ -6,6 +6,10 @@
     </form>
 
     <a href="/">Dashboard</a>
+    {{#if user.manage_links}}
     <a href="/manage_links">Manage Links</a>
+    {{/if}}
+    {{#if user.manage_users}}
     <a href="/manage_users">Manage Users</a>
+    {{/if}}
 </header>

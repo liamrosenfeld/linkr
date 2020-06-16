@@ -20,7 +20,7 @@ function removeByID(id) {
                 document.getElementById("manage-output").textContent =
                     "That user does not exist. (Code: 404)";
                 break;
-            case 409:
+            case 405:
                 document.getElementById("manage-output").textContent =
                     "You cannot delete yourself here.";
                 break;

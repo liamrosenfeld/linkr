@@ -14,13 +14,23 @@
 </head>
 
 <body>
-  <h1>Sign Up</h1>
-
+  <h1>Create New User</h1>
+  <p>Create an account for someone else on your team</p>
   <form action="/api/users/new" method="post">
+    <h3>Credentials</h3>
     <label for="username">username</label>
-    <input type="text" autocomplete="username" name="username" id="username" value="" />
+    <input type="text" autocomplete="username" name="username" id="username" value="" /><br />
     <label for="password">password</label>
     <input type="password" autocomplete="new-password" name="password" id="password" value="" />
+    <p><em>They should update their password on login</em></p>
+
+    <h3>Permissions</h3>
+    <input type="checkbox" id="manage_links" name="manage_links" value="true">
+    <label for="manage_links">Manage All Links</label><br />
+
+    <input type="checkbox" id="manage_users" name="manage_users" value="true">
+    <label for="manage_users">Manage All Users</label><br />
+
     <input type="submit" value="Create Account" />
   </form>
 

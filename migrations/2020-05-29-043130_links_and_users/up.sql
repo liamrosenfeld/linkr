@@ -6,7 +6,9 @@ CREATE TABLE links(
 );
 
 CREATE TABLE users(
-  id       SERIAL PRIMARY KEY,
+  id       INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
-  pw_hash  TEXT NOT NULL
+  pw_hash  TEXT NOT NULL,
+  manage_links BOOLEAN NOT NULL,
+  manage_users BOOLEAN NOT NULL
 );

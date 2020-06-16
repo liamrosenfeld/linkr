@@ -32,10 +32,11 @@ pub fn index(
 
     // user from auth (from cookie)
     let user = User::get(auth.user_id, &conn);
-
     let user_info = match user {
         Ok(user) => json!({
-            "name": user.username
+            "name": user.username,
+            "manage_links": user.manage_links,
+            "manage_users": user.manage_users
         }),
         Err(Error::NotFound) => return Err(Status::Unauthorized),
         Err(_) => return Err(Status::InternalServerError),
@@ -60,11 +61,17 @@ pub fn manage_links(conn: DbConn, auth: Auth) -> Result<Template, Status> {
 
     // user from auth (from cookie)
     let user = User::get(auth.user_id, &conn);
-
     let user_info = match user {
-        Ok(user) => json!({
-            "name": user.username
-        }),
+        Ok(user) => {
+            if !user.manage_links {
+                return Err(Status::Forbidden);
+            }
+            json!({
+                "name": user.username,
+                "manage_links": user.manage_links,
+                "manage_users": user.manage_users
+            })
+        }
         Err(Error::NotFound) => return Err(Status::Unauthorized),
         Err(_) => return Err(Status::InternalServerError),
     };
@@ -87,11 +94,17 @@ pub fn manage_users(conn: DbConn, auth: Auth) -> Result<Template, Status> {
 
     // user from auth (from cookie)
     let user = User::get(auth.user_id, &conn);
-
     let user_info = match user {
-        Ok(user) => json!({
-            "name": user.username
-        }),
+        Ok(user) => {
+            if !user.manage_users {
+                return Err(Status::Forbidden);
+            }
+            json!({
+                "name": user.username,
+                "manage_links": user.manage_links,
+                "manage_users": user.manage_users
+            })
+        }
         Err(Error::NotFound) => return Err(Status::Unauthorized),
         Err(_) => return Err(Status::InternalServerError),
     };
@@ -104,9 +117,25 @@ pub fn manage_users(conn: DbConn, auth: Auth) -> Result<Template, Status> {
     Ok(Template::render("pages/manage_users", &context))
 }
 
-#[get("/signup")]
-pub fn signup(flash: Option<FlashMessage<'_, '_>>) -> Template {
-    template_with_flash("signup", flash)
+#[get("/new_user")]
+pub fn new_user(
+    auth: Auth,
+    flash: Option<FlashMessage<'_, '_>>,
+    conn: DbConn,
+) -> Result<Template, Status> {
+    // check permission
+    let user = User::get(auth.user_id, &conn);
+    match user {
+        Ok(user) => {
+            if !user.manage_users {
+                return Err(Status::Forbidden);
+            }
+        }
+        Err(Error::NotFound) => return Err(Status::Unauthorized),
+        Err(_) => return Err(Status::InternalServerError),
+    };
+
+    Ok(template_with_flash("pages/new_user", flash))
 }
 
 #[get("/login")]
@@ -125,6 +154,20 @@ pub fn login(
             }
         },
         None => Ok(template_with_flash("pages/login", flash)),
+    }
+}
+
+#[get("/setup")]
+pub fn setup(flash: Option<FlashMessage<'_, '_>>, conn: DbConn) -> Result<Template, Status> {
+    match User::all(&conn) {
+        Ok(users) => {
+            if users.len() == 0 {
+                Ok(template_with_flash("pages/setup", flash))
+            } else {
+                Err(Status::Conflict)
+            }
+        }
+        Err(_) => Err(Status::InternalServerError),
     }
 }
 

@@ -9,18 +9,21 @@ use crate::schema::users::dsl::users as all_users;
 use serde::Serialize;
 
 #[derive(Queryable, Serialize, FromForm)]
-
 pub struct User {
     pub id: i32,
     pub username: String,
     pub pw_hash: String,
+    pub manage_links: bool,
+    pub manage_users: bool,
 }
 
 #[derive(Insertable)]
 #[table_name = "users"]
-pub struct NewUser {
+pub struct InsertableUser {
     pub username: String,
     pub pw_hash: String,
+    pub manage_links: bool,
+    pub manage_users: bool,
 }
 
 impl User {
@@ -41,7 +44,7 @@ impl User {
         all_users.order(users::id.desc()).get_results::<User>(conn)
     }
 
-    pub fn insert(user: &NewUser, conn: &PgConnection) -> QueryResult<User> {
+    pub fn insert(user: &InsertableUser, conn: &PgConnection) -> QueryResult<User> {
         diesel::insert_into(users::table)
             .values(user)
             .get_result::<User>(conn)

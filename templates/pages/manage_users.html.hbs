@@ -31,6 +31,7 @@
           <tr>
             <th>ID</th>
             <th>Username</th>
+            <th>Permissions</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -39,6 +40,15 @@
           <tr id="{{id}}-row">
             <td id="{{id}}-id">{{id}}</td>
             <td id="{{id}}-name">{{username}}</td>
+            <td>
+              <input type="checkbox" id="{{id}}-permission-links" name="manage_links" value="true"
+                onclick="updatePermissions({{id}})" {{#if manage_links}} checked {{/if}}>
+              <label for="manage_links">Manage All Links</label><br />
+
+              <input type="checkbox" id="{{id}}-permission-users" name="manage_users" value="true"
+                onclick="updatePermissions({{id}})" {{#if manage_users}} checked {{/if}}>
+              <label for="manage_users">Manage All Users</label><br />
+            </td>
             <td>
               <button id="{{id}}-delete" onclick="removeByID('{{id}}')">Delete</button>
             </td>

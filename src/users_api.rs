@@ -101,3 +101,40 @@ pub fn delete_current(auth: Auth, mut cookies: Cookies<'_>, conn: DbConn) -> Sta
         Err(_) => Status::InternalServerError,
     }
 }
+
+#[derive(FromForm)]
+pub struct PermissionsUpdate {
+    user_id: i32,
+    manage_links: bool,
+    manage_users: bool,
+}
+
+#[post("/update/permissions", data = "<permissions_form>", rank = 1)]
+pub fn update_permissions(
+    permissions_form: Form<PermissionsUpdate>,
+    auth: Auth,
+    conn: DbConn,
+) -> Status {
+    let permissions = permissions_form.into_inner();
+
+    match User::get(auth.user_id, &conn) {
+        Ok(user) => {
+            if !user.manage_users {
+                return Status::Forbidden;
+            }
+        }
+        Err(Error::NotFound) => return Status::Unauthorized,
+        Err(_) => return Status::InternalServerError,
+    }
+
+    match User::update_permissions(
+        permissions.user_id,
+        permissions.manage_links,
+        permissions.manage_users,
+        &conn,
+    ) {
+        Ok(_) => Status::Ok,
+        Err(Error::NotFound) => Status::NotFound,
+        Err(_) => Status::InternalServerError,
+    }
+}

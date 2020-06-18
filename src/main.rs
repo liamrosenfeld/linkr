@@ -63,13 +63,15 @@ fn rocket() -> rocket::Rocket {
                 users_api::login,
                 users_api::logout,
                 users_api::delete_current,
-                users_api::delete_by_id
+                users_api::delete_by_id,
+                users_api::update_permissions
             ],
         )
         .register(catchers![
             catchers::not_found,
             catchers::internal_error,
-            catchers::unauthorized
+            catchers::unauthorized,
+            catchers::forbidden
         ])
 }
 

@@ -26,6 +26,13 @@ pub struct InsertableUser {
     pub manage_users: bool,
 }
 
+#[derive(AsChangeset)]
+#[table_name = "users"]
+struct PermissionForm {
+    manage_links: bool,
+    manage_users: bool,
+}
+
 impl User {
     pub fn get(id: i32, conn: &PgConnection) -> QueryResult<User> {
         all_users.find(id).get_result::<User>(conn)
@@ -55,5 +62,19 @@ impl User {
             return Err(Error::NotFound);
         };
         diesel::delete(all_users.find(id)).execute(conn)
+    }
+
+    pub fn update_permissions(
+        id: i32,
+        manage_links: bool,
+        manage_users: bool,
+        conn: &PgConnection,
+    ) -> QueryResult<usize> {
+        diesel::update(all_users.find(id))
+            .set(&PermissionForm {
+                manage_links,
+                manage_users,
+            })
+            .execute(conn)
     }
 }

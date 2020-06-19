@@ -43,8 +43,9 @@ fn rocket() -> rocket::Rocket {
                 pages::login,
                 pages::manage_links,
                 pages::manage_users,
+                pages::manage_account,
                 static_files::favicon,
-                static_files::all_resources,
+                static_files::all_resources
             ],
         )
         .mount(
@@ -64,7 +65,8 @@ fn rocket() -> rocket::Rocket {
                 users_api::logout,
                 users_api::delete_current,
                 users_api::delete_by_id,
-                users_api::update_permissions
+                users_api::update_permissions,
+                users_api::update_own_username,
             ],
         )
         .register(catchers![

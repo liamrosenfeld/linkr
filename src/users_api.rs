@@ -109,7 +109,7 @@ pub struct PermissionsUpdate {
     manage_users: bool,
 }
 
-#[post("/update/permissions", data = "<permissions_form>", rank = 1)]
+#[post("/update/permissions", data = "<permissions_form>")]
 pub fn update_permissions(
     permissions_form: Form<PermissionsUpdate>,
     auth: Auth,
@@ -136,5 +136,35 @@ pub fn update_permissions(
         Ok(_) => Status::Ok,
         Err(Error::NotFound) => Status::NotFound,
         Err(_) => Status::InternalServerError,
+    }
+}
+
+#[derive(FromForm)]
+pub struct NewUsername {
+    username: String,
+}
+
+#[post("/update/username", data = "<username_form>")]
+pub fn update_own_username(
+    username_form: Form<NewUsername>,
+    auth: Auth,
+    conn: DbConn,
+) -> Result<Flash<Redirect>, Status> {
+    let new_name = username_form.into_inner().username;
+
+    match User::update_username(auth.user_id, new_name, &conn) {
+        Ok(_) => Ok(Flash::success(
+            Redirect::to("/manage_account"),
+            "Username Updated!",
+        )),
+        Err(Error::NotFound) => Err(Status::Unauthorized),
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(Flash::error(
+            Redirect::to("/manage_account"),
+            "That username is taken",
+        )),
+        Err(_) => Ok(Flash::error(
+            Redirect::to("/manage_account"),
+            "An internal server error occurred",
+        )),
     }
 }

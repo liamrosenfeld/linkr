@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linkr</title>
+
+  <style>
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+
+  {{> partials/header }}
+
+  <h1>Manage Account</h1>
+
+  <h2>Username</h2>
+
+  <form action="/api/users/update/username" method="post">
+    <input type="text" name="username" id="username" value="{{user.name}}" />
+    <input type="submit" value="Save" />
+  </form>
+
+  <h2>Password</h2>
+
+  <h2>Delete</h2>
+
+  {{#if flash}}
+  <span class="{{flash.type}}">{{flash.msg}}</span>
+  {{/if}}
+</body>
+
+</html>

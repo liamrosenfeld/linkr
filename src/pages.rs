@@ -117,12 +117,49 @@ pub fn manage_users(conn: DbConn, auth: Auth) -> Result<Template, Status> {
     Ok(Template::render("pages/manage_users", &context))
 }
 
-#[get("/new_user")]
-pub fn new_user(
+#[get("/manage_account")]
+pub fn manage_account(
     auth: Auth,
-    flash: Option<FlashMessage<'_, '_>>,
+    flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Status> {
+    // user from auth (from cookie)
+    let user = User::get(auth.user_id, &conn);
+    let user_info = match user {
+        Ok(user) => {
+            if !user.manage_users {
+                return Err(Status::Forbidden);
+            }
+            json!({
+                "id": user.id,
+                "name": user.username,
+                "manage_links": user.manage_links,
+                "manage_users": user.manage_users
+            })
+        }
+        Err(Error::NotFound) => return Err(Status::Unauthorized),
+        Err(_) => return Err(Status::InternalServerError),
+    };
+
+    // get flash
+    let flash_json = match flash {
+        Some(flash) => json!({
+            "type": flash.name(),
+            "msg": flash.msg(),
+        }),
+        None => json!(null),
+    };
+
+    // render template
+    let context = json!({
+        "user": user_info,
+        "flash": flash_json
+    });
+    Ok(Template::render("pages/manage_account", &context))
+}
+
+#[get("/new_user")]
+pub fn new_user(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
     // check permission
     let user = User::get(auth.user_id, &conn);
     match user {
@@ -142,7 +179,7 @@ pub fn new_user(
 pub fn login(
     auth: Option<Auth>,
     mut cookies: Cookies,
-    flash: Option<FlashMessage<'_, '_>>,
+    flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Redirect> {
     match auth {

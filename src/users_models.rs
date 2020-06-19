@@ -77,4 +77,12 @@ impl User {
             })
             .execute(conn)
     }
+
+    pub fn update_username(id: i32, new_name: String, conn: &PgConnection) -> QueryResult<usize> {
+        use crate::schema::users::dsl::username;
+
+        diesel::update(all_users.find(id))
+            .set(username.eq(new_name))
+            .execute(conn)
+    }
 }

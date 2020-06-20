@@ -39,7 +39,10 @@
           {{#each users}}
           <tr id="{{id}}-row">
             <td id="{{id}}-id">{{id}}</td>
-            <td id="{{id}}-name">{{username}}</td>
+            <td>
+              <span id="{{id}}-name">{{username}}</span>
+              <button id="{{id}}-update" onclick="updateButtonClicked('{{id}}')">Edit</button>
+            </td>
             <td>
               <input type="checkbox" id="{{id}}-permission-links" name="manage_links" value="true"
                 onclick="updatePermissions({{id}})" {{#if manage_links}} checked {{/if}}>

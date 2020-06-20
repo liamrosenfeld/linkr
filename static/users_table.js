@@ -87,3 +87,74 @@ function updatePermissions(id) {
         }
     });
 }
+
+/**
+ * @param {number} id
+ */
+function updateButtonClicked(id) {
+    let button = document.getElementById(`${id}-update`);
+    let nameElement = document.getElementById(`${id}-name`);
+
+    if (button.textContent === "Edit") {
+        let name = nameElement.textContent;
+        let input = document.createElement("input");
+        input.value = name;
+        nameElement.replaceWith(input);
+        input.id = `${id}-name`;
+        button.textContent = "Save";
+
+    } else if (button.textContent === "Save") {
+        let name = nameElement.value;
+        sendUpdate(id, name).then(success => {
+            if (success) {
+                let text = document.createElement("span");
+                text.textContent = name;
+                text.id = `${id}-name`; // has to be after replace
+                nameElement.replaceWith(text);
+                button.textContent = "Edit";
+            }
+        });
+    } else {
+        console.error("button is not named correctly");
+    }
+}
+
+/**
+ * @param {number} id
+ * @param {string} newName
+ */
+async function sendUpdate(id, newName) {
+    const data = { user_id: id, new_name: newName };
+    const dataEncoded = new URLSearchParams(data).toString();
+    const options = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: dataEncoded,
+    };
+
+    let response = await fetch("/api/users/update/username", options);
+    switch (response.status) {
+        case 200:
+            document.getElementById("manage-output").textContent =
+                "Username Updated";
+            return true;
+        case 404:
+            document.getElementById("manage-output").textContent =
+                "That user does not exist. Please refresh your page";
+            return false;
+        case 409:
+            document.getElementById("manage-output").textContent =
+                "That username is taken. (Code: 409)";
+            break;
+        case 500:
+            document.getElementById("manage-output").textContent =
+                "There was an internal server error. (Code: 500)";
+            return false;
+        default:
+            document.getElementById("manage-output").textContent =
+                `There was an error. (Code: ${response.status})`;
+            return false;
+    }
+}

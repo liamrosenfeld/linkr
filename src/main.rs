@@ -67,6 +67,7 @@ fn rocket() -> rocket::Rocket {
                 users_api::delete_by_id,
                 users_api::update_permissions,
                 users_api::update_own_username,
+                users_api::update_username,
             ],
         )
         .register(catchers![

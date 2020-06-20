@@ -140,11 +140,43 @@ pub fn update_permissions(
 }
 
 #[derive(FromForm)]
+pub struct UsernameUpdate {
+    user_id: i32,
+    new_name: String,
+}
+
+#[post("/update/username", data = "<username_form>", rank = 1)]
+pub fn update_username(username_form: Form<UsernameUpdate>, auth: Auth, conn: DbConn) -> Status {
+    let username_update = username_form.into_inner();
+
+    // anyone can change their own username
+    if username_update.user_id != auth.user_id {
+        // users with manage_users can update all usernames
+        match User::get(auth.user_id, &conn) {
+            Ok(user) => {
+                if !user.manage_users {
+                    return Status::Forbidden;
+                }
+            }
+            Err(Error::NotFound) => return Status::Unauthorized,
+            Err(_) => return Status::InternalServerError,
+        }
+    }
+
+    match User::update_username(username_update.user_id, username_update.new_name, &conn) {
+        Ok(_) => Status::Ok,
+        Err(Error::NotFound) => Status::NotFound,
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Status::Conflict,
+        Err(_) => Status::InternalServerError,
+    }
+}
+
+#[derive(FromForm)]
 pub struct NewUsername {
     username: String,
 }
 
-#[post("/update/username", data = "<username_form>")]
+#[post("/update/username", data = "<username_form>", rank = 2)]
 pub fn update_own_username(
     username_form: Form<NewUsername>,
     auth: Auth,

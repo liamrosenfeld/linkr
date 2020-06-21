@@ -12,6 +12,7 @@ table! {
         id -> Int4,
         username -> Text,
         pw_hash -> Text,
+        orig -> Bool,
         manage_links -> Bool,
         manage_users -> Bool,
     }

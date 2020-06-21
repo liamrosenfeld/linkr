@@ -129,6 +129,7 @@ pub fn manage_account(
             json!({
                 "id": user.id,
                 "name": user.username,
+                "orig": user.orig,
                 "manage_links": user.manage_links,
                 "manage_users": user.manage_users
             })
@@ -196,12 +197,12 @@ pub fn login(
 
 #[get("/setup")]
 pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
-    match User::all(&conn) {
-        Ok(users) => {
-            if users.len() == 0 {
+    match User::count(&conn) {
+        Ok(count) => {
+            if count == 0 {
                 Ok(template_with_flash("pages/setup", &flash))
             } else {
-                Err(Status::Conflict)
+                Err(Status::Forbidden)
             }
         }
         Err(_) => Err(Status::InternalServerError),

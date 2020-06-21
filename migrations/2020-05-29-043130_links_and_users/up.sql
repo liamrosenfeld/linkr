@@ -9,6 +9,7 @@ CREATE TABLE users(
   id       INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
   pw_hash  TEXT NOT NULL,
+  orig     BOOLEAN NOT NULL,
   manage_links BOOLEAN NOT NULL,
   manage_users BOOLEAN NOT NULL
 );

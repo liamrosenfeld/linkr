@@ -19,23 +19,57 @@ pub struct NewUser {
 }
 
 #[post("/new", data = "<user_form>")]
-pub fn new(user_form: Form<NewUser>, mut cookies: Cookies<'_>, conn: DbConn) -> Flash<Redirect> {
-    let user_info = user_form.into_inner();
+pub fn new(
+    user_form: Form<NewUser>,
+    auth: Option<Auth>,
+    mut cookies: Cookies<'_>,
+    conn: DbConn,
+) -> Result<Flash<Redirect>, Status> {
+    // if user is authorized and has manage user permission, allow creation of not original
+    // if user is authorized and they do not have manage user permission, return forbidden
+    // if user is not authorized and there are no users, allow creation of original
+    // if user is not authorized and there are existing users, return unauthorized
+    // if unexpected database error occurs, return internal server error
+    let orig = match auth {
+        Some(auth) => match User::get(auth.user_id, &conn) {
+            Ok(user) => {
+                if !user.manage_users {
+                    return Err(Status::Forbidden);
+                } else {
+                    false
+                }
+            }
+            Err(Error::NotFound) => return Err(Status::Unauthorized),
+            Err(_) => return Err(Status::InternalServerError),
+        },
+        None => match User::count(&conn) {
+            Ok(count) => {
+                if count == 0 {
+                    true
+                } else {
+                    return Err(Status::Unauthorized);
+                }
+            }
+            Err(_) => return Err(Status::InternalServerError),
+        },
+    };
 
-    let new_user = InsertableUser::new_from_plain(user_info);
+    let user_info = user_form.into_inner();
+    let new_user = InsertableUser::new_from_plain(user_info, orig);
 
     match User::insert(&new_user, &conn) {
         Ok(new_user) => {
             cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
-            Flash::success(Redirect::to("/"), "Account created")
+            Ok(Flash::success(Redirect::to("/"), "Account created"))
         }
-        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
-            Flash::error(Redirect::to("/new_user"), "Username already taken")
-        }
-        Err(_) => Flash::error(
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(Flash::error(
+            Redirect::to("/new_user"),
+            "Username already taken",
+        )),
+        Err(_) => Ok(Flash::error(
             Redirect::to("/new_user"),
             "An internal server error occurred",
-        ),
+        )),
     }
 }
 
@@ -81,11 +115,29 @@ pub fn delete_by_id(id_form: Form<ID>, auth: Auth, conn: DbConn) -> Status {
     }
 
     match User::get(auth.user_id, &conn) {
-        Ok(_) => match User::delete(id, &conn) {
-            Ok(_) => Status::Ok,
-            Err(Error::NotFound) => Status::NotFound,
-            Err(_) => Status::InternalServerError,
-        },
+        Ok(current_user) => {
+            if current_user.manage_users {
+                match User::get(id, &conn) {
+                    // block if user deleted is original
+                    Ok(delete_user) => {
+                        if delete_user.orig {
+                            return Status::MethodNotAllowed;
+                        }
+                    }
+                    Err(Error::NotFound) => return Status::NotFound,
+                    Err(_) => return Status::InternalServerError,
+                }
+
+                // delete user
+                match User::delete(id, &conn) {
+                    Ok(_) => Status::Ok,
+                    Err(Error::NotFound) => Status::NotFound,
+                    Err(_) => Status::InternalServerError,
+                }
+            } else {
+                Status::Forbidden
+            }
+        }
         Err(Error::NotFound) => Status::Unauthorized,
         Err(_) => Status::InternalServerError,
     }
@@ -97,6 +149,23 @@ pub fn delete_current(
     mut cookies: Cookies<'_>,
     conn: DbConn,
 ) -> Result<Flash<Redirect>, Status> {
+    // block if user deleted is original
+    match User::get(auth.user_id, &conn) {
+        Ok(delete_user) => {
+            if delete_user.orig {
+                return Err(Status::MethodNotAllowed);
+            }
+        }
+        Err(Error::NotFound) => return Err(Status::Unauthorized),
+        Err(_) => {
+            return Ok(Flash::error(
+                Redirect::to("/manage_account"),
+                "An internal server error occurred",
+            ))
+        }
+    }
+
+    // delete user
     match User::delete(auth.user_id, &conn) {
         Ok(_) => {
             cookies.remove_private(Cookie::named("user_id"));

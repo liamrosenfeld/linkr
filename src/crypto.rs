@@ -4,12 +4,11 @@ use crate::models::users::{InsertableUser, User};
 use crate::routes::users::NewUser;
 
 impl InsertableUser {
-    pub fn new_from_plain(new_user: NewUser) -> InsertableUser {
-        let pw_hash = encrypt_pw(&new_user.password);
-
+    pub fn new_from_plain(new_user: NewUser, orig: bool) -> InsertableUser {
         InsertableUser {
             username: new_user.username,
-            pw_hash,
+            pw_hash: encrypt_pw(&new_user.password),
+            orig,
             manage_links: new_user.manage_links,
             manage_users: new_user.manage_users,
         }

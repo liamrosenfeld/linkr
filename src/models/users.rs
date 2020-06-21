@@ -13,6 +13,7 @@ pub struct User {
     pub id: i32,
     pub username: String,
     pub pw_hash: String,
+    pub orig: bool,
     pub manage_links: bool,
     pub manage_users: bool,
 }
@@ -22,6 +23,7 @@ pub struct User {
 pub struct InsertableUser {
     pub username: String,
     pub pw_hash: String,
+    pub orig: bool,
     pub manage_links: bool,
     pub manage_users: bool,
 }
@@ -92,5 +94,9 @@ impl User {
         diesel::update(all_users.find(id))
             .set(pw_hash.eq(new_pw_hash))
             .execute(conn)
+    }
+
+    pub fn count(conn: &PgConnection) -> QueryResult<i64> {
+        all_users.select(diesel::dsl::count_star()).first(conn)
     }
 }

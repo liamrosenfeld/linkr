@@ -42,9 +42,13 @@
 
   <h2>Delete</h2>
 
+  {{#if user.orig}}
+  <p>You cannot delete the original user</p>
+  {{else}}
   <form action="/api/users/delete" method="get">
     <input type="submit" value="Delete" />
   </form>
+  {{/if}}
 
   {{#if flash}}
   <span class="{{flash.type}}">{{flash.msg}}</span>

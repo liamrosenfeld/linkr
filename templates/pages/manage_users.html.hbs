@@ -44,6 +44,9 @@
               <button id="{{id}}-update" onclick="updateButtonClicked('{{id}}')">Edit</button>
             </td>
             <td>
+              {{#if orig}}
+              <p>Original</p>
+              {{else}}
               <input type="checkbox" id="{{id}}-permission-links" name="manage_links" value="true"
                 onclick="updatePermissions({{id}})" {{#if manage_links}} checked {{/if}}>
               <label for="manage_links">Manage All Links</label><br />
@@ -51,9 +54,14 @@
               <input type="checkbox" id="{{id}}-permission-users" name="manage_users" value="true"
                 onclick="updatePermissions({{id}})" {{#if manage_users}} checked {{/if}}>
               <label for="manage_users">Manage All Users</label><br />
+              {{/if}}
             </td>
             <td>
+              {{#if orig}}
+              <p>Original</p>
+              {{else}}
               <button id="{{id}}-delete" onclick="removeByID('{{id}}')">Delete</button>
+              {{/if}}
             </td>
           </tr>
           {{/each}}

@@ -4,26 +4,21 @@ use crate::users_api::NewUser;
 use crate::users_models::{InsertableUser, User};
 
 impl InsertableUser {
-    pub fn new_from_plain(new_user: NewUser) -> Option<InsertableUser> {
-        let param = scrypt::ScryptParams::recommended();
+    pub fn new_from_plain(new_user: NewUser) -> InsertableUser {
+        let pw_hash = encrypt_pw(&new_user.password);
 
-        // scrypt_simple includes a salt
-        let pw_hash = match scrypt::scrypt_simple(&new_user.password, &param) {
-            Ok(hash) => hash,
-            Err(_) => {
-                return None;
-            }
-        };
-
-        let insertable_user = InsertableUser {
+        InsertableUser {
             username: new_user.username,
             pw_hash,
             manage_links: new_user.manage_links,
             manage_users: new_user.manage_users,
-        };
-
-        Some(insertable_user)
+        }
     }
+}
+
+pub fn encrypt_pw(pw: &str) -> String {
+    let param = scrypt::ScryptParams::recommended();
+    scrypt::scrypt_simple(pw, &param).expect("System is misconfigured so OsRng does not work")
 }
 
 impl User {

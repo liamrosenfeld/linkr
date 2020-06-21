@@ -7,6 +7,7 @@ use diesel::result::Error;
 
 use crate::auth::Auth;
 use crate::db::Conn as DbConn;
+use crate::users_crypto::encrypt_pw;
 use crate::users_models::{InsertableUser, User};
 
 #[derive(FromForm)]
@@ -18,13 +19,10 @@ pub struct NewUser {
 }
 
 #[post("/new", data = "<user_form>")]
-pub fn new(mut cookies: Cookies<'_>, conn: DbConn, user_form: Form<NewUser>) -> Flash<Redirect> {
+pub fn new(user_form: Form<NewUser>, mut cookies: Cookies<'_>, conn: DbConn) -> Flash<Redirect> {
     let user_info = user_form.into_inner();
 
-    let new_user = match InsertableUser::new_from_plain(user_info) {
-        Some(new) => new,
-        None => return Flash::error(Redirect::to("/signup"), "An internal server error occurred"),
-    };
+    let new_user = InsertableUser::new_from_plain(user_info);
 
     match User::insert(&new_user, &conn) {
         Ok(new_user) => {
@@ -45,7 +43,7 @@ pub struct Login {
 }
 
 #[post("/login", data = "<user_form>")]
-pub fn login(mut cookies: Cookies<'_>, conn: DbConn, user_form: Form<Login>) -> Flash<Redirect> {
+pub fn login(user_form: Form<Login>, mut cookies: Cookies<'_>, conn: DbConn) -> Flash<Redirect> {
     let login = user_form.into_inner();
     match User::get_by_name(&login.username, &conn) {
         Ok(selected_user) => {
@@ -163,7 +161,7 @@ pub fn update_username(username_form: Form<UsernameUpdate>, auth: Auth, conn: Db
         }
     }
 
-    match User::update_username(username_update.user_id, username_update.new_name, &conn) {
+    match User::update_username(username_update.user_id, &username_update.new_name, &conn) {
         Ok(_) => Status::Ok,
         Err(Error::NotFound) => Status::NotFound,
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Status::Conflict,
@@ -184,7 +182,7 @@ pub fn update_own_username(
 ) -> Result<Flash<Redirect>, Status> {
     let new_name = username_form.into_inner().username;
 
-    match User::update_username(auth.user_id, new_name, &conn) {
+    match User::update_username(auth.user_id, &new_name, &conn) {
         Ok(_) => Ok(Flash::success(
             Redirect::to("/manage_account"),
             "Username Updated!",
@@ -194,6 +192,60 @@ pub fn update_own_username(
             Redirect::to("/manage_account"),
             "That username is taken",
         )),
+        Err(_) => Ok(Flash::error(
+            Redirect::to("/manage_account"),
+            "An internal server error occurred",
+        )),
+    }
+}
+
+#[derive(FromForm)]
+pub struct PasswordUpdate {
+    current_pw: String,
+    new_pw: String,
+}
+
+#[post("/update/password", data = "<pw_form>")]
+pub fn update_password(
+    pw_form: Form<PasswordUpdate>,
+    auth: Auth,
+    mut cookies: Cookies<'_>,
+    conn: DbConn,
+) -> Result<Flash<Redirect>, Status> {
+    let passwords = pw_form.into_inner();
+
+    let user = match User::get(auth.user_id, &conn) {
+        Ok(user) => user,
+        Err(Error::NotFound) => return Err(Status::Unauthorized),
+        Err(_) => {
+            return Ok(Flash::error(
+                Redirect::to("/manage_account"),
+                "An internal server error occurred",
+            ))
+        }
+    };
+
+    if !user.verify(&passwords.current_pw) {
+        return Ok(Flash::error(
+            Redirect::to("/manage_account"),
+            "Incorrect current password",
+        ));
+    }
+
+    if passwords.new_pw == passwords.current_pw {
+        return Ok(Flash::error(
+            Redirect::to("/manage_account"),
+            "New password cannot be current password",
+        ));
+    }
+
+    let pw_hash = encrypt_pw(&passwords.new_pw);
+
+    match User::update_password(auth.user_id, &pw_hash, &conn) {
+        Ok(_) => {
+            cookies.remove_private(Cookie::named("user_id"));
+            Ok(Flash::success(Redirect::to("/login"), "Password changed!"))
+        }
         Err(_) => Ok(Flash::error(
             Redirect::to("/manage_account"),
             "An internal server error occurred",

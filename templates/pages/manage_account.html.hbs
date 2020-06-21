@@ -32,6 +32,14 @@
 
   <h2>Password</h2>
 
+  <form action="/api/users/update/password" method="post">
+    <label for="current_pw">Current Password:</label>
+    <input autocomplete="current-password" type="password" name="current_pw" value="" /><br />
+    <label for="new_pw">New Password:</label>
+    <input autocomplete="new-password" type="password" name="new_pw" value="" /><br />
+    <input type="submit" value="Save" />
+  </form>
+
   <h2>Delete</h2>
 
   {{#if flash}}

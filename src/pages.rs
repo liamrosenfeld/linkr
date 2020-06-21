@@ -172,14 +172,14 @@ pub fn new_user(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result
         Err(_) => return Err(Status::InternalServerError),
     };
 
-    Ok(template_with_flash("pages/new_user", flash))
+    Ok(template_with_flash("pages/new_user", &flash))
 }
 
 #[get("/login")]
 pub fn login(
+    flash: Option<FlashMessage>,
     auth: Option<Auth>,
     mut cookies: Cookies,
-    flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Redirect> {
     match auth {
@@ -187,19 +187,19 @@ pub fn login(
             Ok(_) => Err(Redirect::to("/")),
             Err(_) => {
                 cookies.remove_private(Cookie::named("user_id"));
-                Ok(template_with_flash("pages/login", flash))
+                Ok(template_with_flash("pages/login", &flash))
             }
         },
-        None => Ok(template_with_flash("pages/login", flash)),
+        None => Ok(template_with_flash("pages/login", &flash)),
     }
 }
 
 #[get("/setup")]
-pub fn setup(flash: Option<FlashMessage<'_, '_>>, conn: DbConn) -> Result<Template, Status> {
+pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
     match User::all(&conn) {
         Ok(users) => {
             if users.len() == 0 {
-                Ok(template_with_flash("pages/setup", flash))
+                Ok(template_with_flash("pages/setup", &flash))
             } else {
                 Err(Status::Conflict)
             }
@@ -208,7 +208,7 @@ pub fn setup(flash: Option<FlashMessage<'_, '_>>, conn: DbConn) -> Result<Templa
     }
 }
 
-fn template_with_flash(template: &'static str, flash: Option<FlashMessage<'_, '_>>) -> Template {
+fn template_with_flash(template: &'static str, flash: &Option<FlashMessage>) -> Template {
     let flash_json = match flash {
         Some(flash) => json!({
             "type": flash.name(),

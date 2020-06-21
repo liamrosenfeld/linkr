@@ -78,11 +78,19 @@ impl User {
             .execute(conn)
     }
 
-    pub fn update_username(id: i32, new_name: String, conn: &PgConnection) -> QueryResult<usize> {
+    pub fn update_username(id: i32, new_name: &str, conn: &PgConnection) -> QueryResult<usize> {
         use crate::schema::users::dsl::username;
 
         diesel::update(all_users.find(id))
             .set(username.eq(new_name))
+            .execute(conn)
+    }
+
+    pub fn update_password(id: i32, new_pw_hash: &str, conn: &PgConnection) -> QueryResult<usize> {
+        use crate::schema::users::dsl::pw_hash;
+
+        diesel::update(all_users.find(id))
+            .set(pw_hash.eq(new_pw_hash))
             .execute(conn)
     }
 }

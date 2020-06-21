@@ -1,7 +1,7 @@
 use crate::auth::Auth;
 use crate::db::Conn as DbConn;
-use crate::links_models::Link;
-use crate::users_models::User;
+use crate::models::links::Link;
+use crate::models::users::User;
 
 use diesel::result::Error;
 use rocket::http::{Cookie, Cookies, Status};

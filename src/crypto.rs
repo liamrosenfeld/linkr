@@ -1,7 +1,7 @@
 use scrypt;
 
-use crate::users_api::NewUser;
-use crate::users_models::{InsertableUser, User};
+use crate::models::users::{InsertableUser, User};
+use crate::routes::users::NewUser;
 
 impl InsertableUser {
     pub fn new_from_plain(new_user: NewUser) -> InsertableUser {

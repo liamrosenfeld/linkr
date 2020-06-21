@@ -13,15 +13,11 @@ use std::env;
 
 mod auth;
 mod catchers;
+mod crypto;
 mod db;
-mod links_api;
-mod links_models;
-mod pages;
+mod models;
+mod routes;
 mod schema;
-mod static_files;
-mod users_api;
-mod users_crypto;
-mod users_models;
 
 fn rocket() -> rocket::Rocket {
     // create db pool from .env
@@ -36,39 +32,39 @@ fn rocket() -> rocket::Rocket {
         .mount(
             "/",
             routes![
-                links_api::lookup,
-                pages::index,
-                pages::new_user,
-                pages::setup,
-                pages::login,
-                pages::manage_links,
-                pages::manage_users,
-                pages::manage_account,
-                static_files::favicon,
-                static_files::all_resources
+                routes::links::lookup,
+                routes::pages::index,
+                routes::pages::new_user,
+                routes::pages::setup,
+                routes::pages::login,
+                routes::pages::manage_links,
+                routes::pages::manage_users,
+                routes::pages::manage_account,
+                routes::static_files::favicon,
+                routes::static_files::all_resources
             ],
         )
         .mount(
             "/api/links/",
             routes![
-                links_api::shorten,
-                links_api::all,
-                links_api::delete,
-                links_api::update
+                routes::links::shorten,
+                routes::links::all,
+                routes::links::delete,
+                routes::links::update
             ],
         )
         .mount(
             "/api/users/",
             routes![
-                users_api::new,
-                users_api::login,
-                users_api::logout,
-                users_api::delete_current,
-                users_api::delete_by_id,
-                users_api::update_permissions,
-                users_api::update_own_username,
-                users_api::update_username,
-                users_api::update_password
+                routes::users::new,
+                routes::users::login,
+                routes::users::logout,
+                routes::users::delete_current,
+                routes::users::delete_by_id,
+                routes::users::update_permissions,
+                routes::users::update_own_username,
+                routes::users::update_username,
+                routes::users::update_password
             ],
         )
         .register(catchers![

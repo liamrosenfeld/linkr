@@ -6,9 +6,9 @@ use diesel::result::DatabaseErrorKind;
 use diesel::result::Error;
 
 use crate::auth::Auth;
+use crate::crypto::encrypt_pw;
 use crate::db::Conn as DbConn;
-use crate::users_crypto::encrypt_pw;
-use crate::users_models::{InsertableUser, User};
+use crate::models::users::{InsertableUser, User};
 
 #[derive(FromForm)]
 pub struct NewUser {
@@ -30,9 +30,12 @@ pub fn new(user_form: Form<NewUser>, mut cookies: Cookies<'_>, conn: DbConn) -> 
             Flash::success(Redirect::to("/"), "Account created")
         }
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
-            Flash::error(Redirect::to("/signup"), "Username already taken")
+            Flash::error(Redirect::to("/new_user"), "Username already taken")
         }
-        Err(_) => Flash::error(Redirect::to("/signup"), "An internal server error occurred"),
+        Err(_) => Flash::error(
+            Redirect::to("/new_user"),
+            "An internal server error occurred",
+        ),
     }
 }
 

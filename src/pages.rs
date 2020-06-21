@@ -10,11 +10,7 @@ use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
 
 #[get("/")]
-pub fn index(
-    conn: DbConn,
-    flash: Option<FlashMessage<'_, '_>>,
-    auth: Auth,
-) -> Result<Template, Status> {
+pub fn index(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
     // links for table
     let links = match Link::all_for_user(auth.user_id, &conn) {
         Ok(links) => links,
@@ -177,8 +173,8 @@ pub fn new_user(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result
 
 #[get("/login")]
 pub fn login(
-    flash: Option<FlashMessage>,
     auth: Option<Auth>,
+    flash: Option<FlashMessage>,
     mut cookies: Cookies,
     conn: DbConn,
 ) -> Result<Template, Redirect> {
@@ -187,10 +183,14 @@ pub fn login(
             Ok(_) => Err(Redirect::to("/")),
             Err(_) => {
                 cookies.remove_private(Cookie::named("user_id"));
+                drop(cookies); // need to drop before accessing flash
                 Ok(template_with_flash("pages/login", &flash))
             }
         },
-        None => Ok(template_with_flash("pages/login", &flash)),
+        None => {
+            drop(cookies); // need to drop before accessing flash
+            Ok(template_with_flash("pages/login", &flash))
+        }
     }
 }
 

@@ -42,6 +42,10 @@
 
   <h2>Delete</h2>
 
+  <form action="/api/users/delete" method="get">
+    <input type="submit" value="Delete" />
+  </form>
+
   {{#if flash}}
   <span class="{{flash.type}}">{{flash.msg}}</span>
   {{/if}}

@@ -88,15 +88,22 @@ pub fn delete_by_id(id_form: Form<ID>, auth: Auth, conn: DbConn) -> Status {
     }
 }
 
-#[delete("/delete", rank = 2)]
-pub fn delete_current(auth: Auth, mut cookies: Cookies<'_>, conn: DbConn) -> Status {
+#[get("/delete", rank = 2)]
+pub fn delete_current(
+    auth: Auth,
+    mut cookies: Cookies<'_>,
+    conn: DbConn,
+) -> Result<Flash<Redirect>, Status> {
     match User::delete(auth.user_id, &conn) {
         Ok(_) => {
             cookies.remove_private(Cookie::named("user_id"));
-            Status::Ok
+            Ok(Flash::success(Redirect::to("/login"), "User deleted"))
         }
-        Err(Error::NotFound) => Status::Unauthorized,
-        Err(_) => Status::InternalServerError,
+        Err(Error::NotFound) => Err(Status::Unauthorized),
+        Err(_) => Ok(Flash::error(
+            Redirect::to("/manage_account"),
+            "An internal server error occurred",
+        )),
     }
 }
 

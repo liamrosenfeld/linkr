@@ -2,6 +2,10 @@
  * @param {number} id
  */
 function removeByID(id) {
+    if (!confirm(`Delete the user?`)) {
+        return;
+    }
+
     const options = {
         method: "POST",
         headers: {

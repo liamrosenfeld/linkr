@@ -59,9 +59,12 @@ pub fn new(
 
     match User::insert(&new_user, &conn) {
         Ok(new_user) => {
-            cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
-            Ok(Flash::success(Redirect::to("/"), "Account created"))
-        }
+            if orig {
+                cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
+            }
+            let to = if orig { "/" } else { "new_user" };
+            Ok(Flash::success(Redirect::to(to), format!("{} created", new_user.username)))
+        },
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(Flash::error(
             Redirect::to("/new_user"),
             "Username already taken",
@@ -106,7 +109,7 @@ pub struct ID {
     id: i32,
 }
 
-#[post("/delete", data = "<id_form>", rank = 1)]
+#[post("/delete", data = "<id_form>")]
 pub fn delete_by_id(id_form: Form<ID>, auth: Auth, conn: DbConn) -> Status {
     let id = id_form.into_inner().id;
 
@@ -143,18 +146,25 @@ pub fn delete_by_id(id_form: Form<ID>, auth: Auth, conn: DbConn) -> Status {
     }
 }
 
-#[get("/delete", rank = 2)]
+#[derive(FromForm)]
+pub struct Password {
+    password: String,
+}
+
+#[post("/delete_current", data = "<pw_form>")]
 pub fn delete_current(
+    pw_form: Form<Password>,
     auth: Auth,
     mut cookies: Cookies<'_>,
     conn: DbConn,
 ) -> Result<Flash<Redirect>, Status> {
     // block if user deleted is original
-    match User::get(auth.user_id, &conn) {
+    let user = match User::get(auth.user_id, &conn) {
         Ok(delete_user) => {
             if delete_user.orig {
                 return Err(Status::MethodNotAllowed);
             }
+            delete_user
         }
         Err(Error::NotFound) => return Err(Status::Unauthorized),
         Err(_) => {
@@ -163,6 +173,15 @@ pub fn delete_current(
                 "An internal server error occurred",
             ))
         }
+    };
+
+    // check password
+    let pw = pw_form.into_inner().password;
+    if !user.verify(&pw) {
+        return Ok(Flash::error(
+            Redirect::to("/manage_account"),
+            "Incorrect password",
+        ))
     }
 
     // delete user

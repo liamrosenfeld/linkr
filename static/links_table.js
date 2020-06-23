@@ -4,6 +4,10 @@
  * @param {string} short
  */
 function removeByShort(short) {
+    if (!confirm(`Delete the link "${short}"?`)) {
+        return;
+    }
+
     const options = {
         method: "POST",
         headers: {

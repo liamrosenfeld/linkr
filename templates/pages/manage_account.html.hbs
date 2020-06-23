@@ -45,7 +45,9 @@
   {{#if user.orig}}
   <p>You cannot delete the original user</p>
   {{else}}
-  <form action="/api/users/delete" method="get">
+  <form action="/api/users/delete_current" method="post">
+    <label for="password">Current Password:</label>
+    <input autocomplete="current-password" type="password" name="password" value="" /><br />
     <input type="submit" value="Delete" />
   </form>
   {{/if}}

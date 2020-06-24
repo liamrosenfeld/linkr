@@ -6,24 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Linkr</title>
 
-  <style>
-    th,
-    td {
-      border: 1px solid;
-    }
+  <link rel="stylesheet" href="/resource/style.css">
 
-    th {
-      font-weight: bold;
-    }
-
-    .success {
-      color: green;
-    }
-
-    .error {
-      color: red;
-    }
-  </style>
 </head>
 
 <body>
@@ -47,10 +31,6 @@
 
       <input type="submit" value="Create New" />
     </form>
-
-    {{#if flash}}
-    <span class="{{flash.type}}">{{flash.msg}}</span>
-    {{/if}}
   </div>
 
   <div id="manage">
@@ -90,6 +70,9 @@
 
     <span id="manage-output"> </span>
   </div>
+
+  {{> partials/footer }}
+
   <script type="text/javascript" src="/resource/links_table.js"></script>
 </body>
 

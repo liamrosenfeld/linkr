@@ -62,9 +62,12 @@ pub fn new(
             if orig {
                 cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
             }
-            let to = if orig { "/" } else { "new_user" };
-            Ok(Flash::success(Redirect::to(to), format!("{} created", new_user.username)))
-        },
+            let to = if orig { "/" } else { "/new_user" };
+            Ok(Flash::success(
+                Redirect::to(to),
+                format!("{} created", new_user.username),
+            ))
+        }
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(Flash::error(
             Redirect::to("/new_user"),
             "Username already taken",
@@ -181,7 +184,7 @@ pub fn delete_current(
         return Ok(Flash::error(
             Redirect::to("/manage_account"),
             "Incorrect password",
-        ))
+        ));
     }
 
     // delete user

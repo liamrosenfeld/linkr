@@ -8,6 +8,7 @@ use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::FlashMessage;
 use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
+use serde_json::value::Value;
 
 #[get("/")]
 pub fn index(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
@@ -17,38 +18,24 @@ pub fn index(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Te
         Err(_) => return Err(Status::InternalServerError),
     };
 
-    // flash message
-    let flash_json = match flash {
-        Some(flash) => json!({
-            "type": flash.name(),
-            "msg": flash.msg(),
-        }),
-        None => json!(null),
-    };
-
     // user from auth (from cookie)
-    let user = User::get(auth.user_id, &conn);
-    let user_info = match user {
-        Ok(user) => json!({
-            "name": user.username,
-            "manage_links": user.manage_links,
-            "manage_users": user.manage_users
-        }),
-        Err(Error::NotFound) => return Err(Status::Unauthorized),
-        Err(_) => return Err(Status::InternalServerError),
-    };
+    let user_info = user_json(auth.user_id, &conn)?;
 
     // render template
     let context = json!({
         "links": links,
-        "flash": flash_json,
-        "user": user_info
+        "user": user_info,
+        "flash": flash_json(&flash),
     });
     Ok(Template::render("pages/index", &context))
 }
 
 #[get("/manage_links")]
-pub fn manage_links(conn: DbConn, auth: Auth) -> Result<Template, Status> {
+pub fn manage_links(
+    auth: Auth,
+    flash: Option<FlashMessage>,
+    conn: DbConn,
+) -> Result<Template, Status> {
     // links for table
     let links = match Link::all(&conn) {
         Ok(links) => links,
@@ -56,32 +43,23 @@ pub fn manage_links(conn: DbConn, auth: Auth) -> Result<Template, Status> {
     };
 
     // user from auth (from cookie)
-    let user = User::get(auth.user_id, &conn);
-    let user_info = match user {
-        Ok(user) => {
-            if !user.manage_links {
-                return Err(Status::Forbidden);
-            }
-            json!({
-                "name": user.username,
-                "manage_links": user.manage_links,
-                "manage_users": user.manage_users
-            })
-        }
-        Err(Error::NotFound) => return Err(Status::Unauthorized),
-        Err(_) => return Err(Status::InternalServerError),
-    };
+    let user_info = user_json(auth.user_id, &conn)?;
 
     // render template
     let context = json!({
         "links": links,
-        "user": user_info
+        "user": user_info,
+        "flash": flash_json(&flash)
     });
     Ok(Template::render("pages/manage_links", &context))
 }
 
 #[get("/manage_users")]
-pub fn manage_users(conn: DbConn, auth: Auth) -> Result<Template, Status> {
+pub fn manage_users(
+    auth: Auth,
+    flash: Option<FlashMessage>,
+    conn: DbConn,
+) -> Result<Template, Status> {
     // links for table
     let users = match User::all(&conn) {
         Ok(users) => users,
@@ -89,26 +67,13 @@ pub fn manage_users(conn: DbConn, auth: Auth) -> Result<Template, Status> {
     };
 
     // user from auth (from cookie)
-    let user = User::get(auth.user_id, &conn);
-    let user_info = match user {
-        Ok(user) => {
-            if !user.manage_users {
-                return Err(Status::Forbidden);
-            }
-            json!({
-                "name": user.username,
-                "manage_links": user.manage_links,
-                "manage_users": user.manage_users
-            })
-        }
-        Err(Error::NotFound) => return Err(Status::Unauthorized),
-        Err(_) => return Err(Status::InternalServerError),
-    };
+    let user_info = user_json(auth.user_id, &conn)?;
 
     // render template
     let context = json!({
         "users": users,
-        "user": user_info
+        "user": user_info,
+        "flash": flash_json(&flash)
     });
     Ok(Template::render("pages/manage_users", &context))
 }
@@ -119,38 +84,10 @@ pub fn manage_account(
     flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Status> {
-    // user from auth (from cookie)
-    let user = User::get(auth.user_id, &conn);
-    let user_info = match user {
-        Ok(user) => {
-            if !user.manage_users {
-                return Err(Status::Forbidden);
-            }
-            json!({
-                "id": user.id,
-                "name": user.username,
-                "orig": user.orig,
-                "manage_links": user.manage_links,
-                "manage_users": user.manage_users
-            })
-        }
-        Err(Error::NotFound) => return Err(Status::Unauthorized),
-        Err(_) => return Err(Status::InternalServerError),
-    };
-
-    // get flash
-    let flash_json = match flash {
-        Some(flash) => json!({
-            "type": flash.name(),
-            "msg": flash.msg(),
-        }),
-        None => json!(null),
-    };
-
-    // render template
+    let user_info = user_json(auth.user_id, &conn)?;
     let context = json!({
         "user": user_info,
-        "flash": flash_json
+        "flash": flash_json(&flash)
     });
     Ok(Template::render("pages/manage_account", &context))
 }
@@ -169,7 +106,8 @@ pub fn new_user(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result
         Err(_) => return Err(Status::InternalServerError),
     };
 
-    Ok(template_with_flash("pages/new_user", &flash))
+    let context = just_flash_context(&flash);
+    Ok(Template::render("pages/new_user", &context))
 }
 
 #[get("/login")]
@@ -185,12 +123,14 @@ pub fn login(
             Err(_) => {
                 cookies.remove_private(Cookie::named("user_id"));
                 drop(cookies); // need to drop before accessing flash
-                Ok(template_with_flash("pages/login", &flash))
+                let context = just_flash_context(&flash);
+                Ok(Template::render("pages/login", &context))
             }
         },
         None => {
             drop(cookies); // need to drop before accessing flash
-            Ok(template_with_flash("pages/login", &flash))
+            let context = just_flash_context(&flash);
+            Ok(Template::render("pages/login", &context))
         }
     }
 }
@@ -200,7 +140,8 @@ pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Stat
     match User::count(&conn) {
         Ok(count) => {
             if count == 0 {
-                Ok(template_with_flash("pages/setup", &flash))
+                let context = just_flash_context(&flash);
+                Ok(Template::render("pages/setup", &context))
             } else {
                 Err(Status::Forbidden)
             }
@@ -209,18 +150,46 @@ pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Stat
     }
 }
 
-fn template_with_flash(template: &'static str, flash: &Option<FlashMessage>) -> Template {
-    let flash_json = match flash {
+/* --------------------------------- helpers -------------------------------- */
+
+fn user_json(id: i32, conn: &DbConn) -> Result<Value, Status> {
+    let user = User::get(id, conn);
+    match user {
+        Ok(user) => {
+            if !user.manage_users {
+                return Err(Status::Forbidden);
+            }
+            return Ok(json!({
+                "id": user.id,
+                "name": user.username,
+                "orig": user.orig,
+                "manage_links": user.manage_links,
+                "manage_users": user.manage_users
+            }));
+        }
+        Err(Error::NotFound) => return Err(Status::Unauthorized),
+        Err(_) => return Err(Status::InternalServerError),
+    }
+}
+
+fn flash_json(flash: &Option<FlashMessage>) -> Value {
+    match flash {
         Some(flash) => json!({
             "type": flash.name(),
             "msg": flash.msg(),
         }),
         None => json!(null),
-    };
+    }
+}
 
-    let context = json!({
-        "flash": flash_json,
-    });
-
-    Template::render(template, &context)
+fn just_flash_context(flash: &Option<FlashMessage>) -> Value {
+    match flash {
+        Some(flash) => json!({
+            "flash": {
+                "type": flash.name(),
+                "msg": flash.msg(),
+            }
+        }),
+        None => json!(null),
+    }
 }

@@ -57,8 +57,10 @@ function updateButtonClicked(short) {
         let long = longElement.value;
         sendUpdate(short, long).then(success => {
             if (success) {
-                let text = document.createElement("span");
+                let text = document.createElement("a");
                 text.textContent = long;
+                text.href = long;
+                text.target = "_blank";
                 text.id = `${short}-long`; // has to be after replace
                 longElement.replaceWith(text);
                 button.textContent = "Edit";

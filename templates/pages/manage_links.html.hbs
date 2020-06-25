@@ -23,6 +23,7 @@
           <tr>
             <th>Short</th>
             <th>Long</th>
+            <th>Notes</th>
             <th>Created On</th>
             <th>Created By</th>
             <th>Actions</th>
@@ -36,6 +37,7 @@
               <a id="{{short}}-long" href="{{long}}" target="_blank">{{long}}</a>
               <button id="{{short}}-update" onclick="updateButtonClicked('{{short}}')">Edit</button>
             </td>
+            <td id="{{short}}-notes">{{notes}}</td>
             <td id="{{short}}-at">{{created_at}}</td>
             <td id="{{short}}-by">{{created_by}}</td>
             <td>

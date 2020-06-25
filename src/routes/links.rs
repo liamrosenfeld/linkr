@@ -30,9 +30,10 @@ pub fn lookup(conn: DbConn, short: String) -> Result<Redirect, Status> {
 pub struct NewLink {
     short: String,
     long: String,
+    notes: String,
 }
 
-const RESERVED_LINKS: [&str; 7] = [
+const RESERVED_LINKS: [&str; 8] = [
     "api",
     "login",
     "resource",
@@ -40,6 +41,7 @@ const RESERVED_LINKS: [&str; 7] = [
     "setup",
     "manage_links",
     "manage_users",
+    "manage_account",
 ];
 
 #[post("/new", data = "<link_form>")]
@@ -88,6 +90,7 @@ pub fn shorten(
     let link = Link {
         short: new_link.short,
         long: new_link.long,
+        notes: new_link.notes,
         created_at: Utc::now(),
         created_by: user.id,
     };

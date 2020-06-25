@@ -13,6 +13,7 @@ use crate::schema::links::dsl::links as all_links;
 pub struct Link {
     pub short: String,
     pub long: String,
+    pub notes: String,
     #[serde(with = "date_format")]
     pub created_at: DateTime<Utc>,
     pub created_by: i32,

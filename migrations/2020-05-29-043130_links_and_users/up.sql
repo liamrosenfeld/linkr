@@ -1,6 +1,7 @@
 CREATE TABLE links(
   short TEXT PRIMARY KEY,
   long  TEXT NOT NULL,
+  notes TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   created_by INTEGER NOT NULL
 );

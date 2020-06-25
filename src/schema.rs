@@ -2,6 +2,7 @@ table! {
     links (short) {
         short -> Text,
         long -> Text,
+        notes -> Text,
         created_at -> Timestamptz,
         created_by -> Int4,
     }

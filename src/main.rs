@@ -5,9 +5,13 @@ extern crate rocket;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
+extern crate diesel_migrations;
+#[macro_use]
 extern crate serde_json;
 
 use dotenv::dotenv;
+use rocket::fairing::AdHoc;
+use rocket::Rocket;
 use rocket_contrib::templates::Template;
 use std::env;
 
@@ -28,6 +32,7 @@ fn rocket() -> rocket::Rocket {
     // setup rocket
     rocket::ignite()
         .manage(pool)
+        .attach(AdHoc::on_attach("Database Migrations", run_db_migrations))
         .attach(Template::fairing())
         .mount(
             "/",
@@ -73,6 +78,34 @@ fn rocket() -> rocket::Rocket {
             catchers::unauthorized,
             catchers::forbidden
         ])
+}
+
+// This macro from `diesel_migrations` defines an `embedded_migrations` module
+// containing a function named `run`. This allows migrations to be run during
+// run-time instead of before compile-time. That is the only way for the `DATABASE_URL`
+// from docker to be available and running.
+embed_migrations!();
+
+fn run_db_migrations(rocket: Rocket) -> Result<Rocket, Rocket> {
+    let conn = match rocket
+        .state::<db::Pool>()
+        .expect("This needs to be after manage(state: pool)")
+        .get()
+    {
+        Ok(pool) => pool,
+        Err(e) => {
+            eprintln!("Could not connect to database: {:?}", e);
+            return Err(rocket);
+        }
+    };
+
+    match embedded_migrations::run(&conn) {
+        Ok(()) => Ok(rocket),
+        Err(e) => {
+            eprintln!("Failed to run database migrations: {:?}", e);
+            Err(rocket)
+        }
+    }
 }
 
 fn main() {

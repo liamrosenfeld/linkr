@@ -1,0 +1,6 @@
+{
+  "name": "Linkr",
+  "stack": "container",
+  "success_url": "/setup",
+  "addons": ["heroku-postgresql"]
+}

@@ -1,0 +1,21 @@
+version: "3"
+services:
+  web:
+    image: linkr
+    build: .
+    environment:
+      DATABASE_URL: postgres://docker:docker@db:5432/linkr
+      ROCKET_SECRET_KEY: VeGogG28Eos7feRq4+hTN17aG2gNhcTFMVChX3LjjyI= # ONLY USE FOR TESTING
+      PORT: 8000
+    ports:
+      - 8000:8000
+    links:
+      - db
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: linkr
+      POSTGRES_PASSWORD: docker
+      POSTGRES_USER: docker

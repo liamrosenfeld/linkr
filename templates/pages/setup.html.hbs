@@ -10,18 +10,21 @@
 </head>
 
 <body>
-  <h1>Setup Linkr</h1>
-  <form action="/api/users/new" method="post">
-    <label for="username">username</label>
-    <input type="text" autocomplete="username" name="username" id="username" value="" />
-    <label for="password">password</label>
-    <input type="password" autocomplete="new-password" name="password" id="password" value="" />
 
-    <input type="hidden" id="manage_links" name="manage_links" value="true">
-    <input type="hidden" id="manage_links" name="manage_users" value="true">
+  <div id="content">
+    <h1>Setup Linkr</h1>
+    <form action="/api/users/new" method="post">
+      <label for="username">username</label>
+      <input type="text" autocomplete="username" name="username" id="username" value="" /><br />
+      <label for="password">password</label>
+      <input type="password" autocomplete="new-password" name="password" id="password" value="" /><br />
 
-    <input type="submit" value="Create Account" />
-  </form>
+      <input type="hidden" id="manage_links" name="manage_links" value="true">
+      <input type="hidden" id="manage_links" name="manage_users" value="true">
+
+      <input type="submit" value="Create Account" />
+    </form>
+  </div>
 
   {{> partials/footer }}
 </body>

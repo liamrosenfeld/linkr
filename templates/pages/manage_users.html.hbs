@@ -13,9 +13,13 @@
 
   {{> partials/header }}
 
-  <div id="manage">
+  <div id="content">
     <h1>Manage Users</h1>
-    <a href="/new_user">Create New User</a>
+
+    <form action="/new_user">
+      <input type="submit" value="Create New User" />
+    </form>
+
     <div id="manage-table">
       <table>
         <thead>

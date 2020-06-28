@@ -12,19 +12,19 @@ use serde_json::value::Value;
 
 #[get("/")]
 pub fn index(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
+    // user from auth (from cookie)
+    let user = get_user(auth.user_id, &conn)?;
+
     // links for table
     let links = match Link::all_for_user(auth.user_id, &conn) {
         Ok(links) => links,
         Err(_) => return Err(Status::InternalServerError),
     };
 
-    // user from auth (from cookie)
-    let user_info = user_json(auth.user_id, &conn)?;
-
     // render template
     let context = json!({
         "links": links,
-        "user": user_info,
+        "user": user,
         "flash": flash_json(&flash),
     });
     Ok(Template::render("pages/index", &context))
@@ -36,19 +36,22 @@ pub fn manage_links(
     flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Status> {
+    // user from auth (from cookie)
+    let user = get_user(auth.user_id, &conn)?;
+    if !user.manage_links {
+        return Err(Status::Forbidden);
+    }
+
     // links for table
     let links = match Link::all(&conn) {
         Ok(links) => links,
         Err(_) => return Err(Status::InternalServerError),
     };
 
-    // user from auth (from cookie)
-    let user_info = user_json(auth.user_id, &conn)?;
-
     // render template
     let context = json!({
         "links": links,
-        "user": user_info,
+        "user": user,
         "flash": flash_json(&flash)
     });
     Ok(Template::render("pages/manage_links", &context))
@@ -60,19 +63,22 @@ pub fn manage_users(
     flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Status> {
+    // user from auth (from cookie)
+    let user = get_user(auth.user_id, &conn)?;
+    if !user.manage_users {
+        return Err(Status::Forbidden);
+    }
+
     // links for table
     let users = match User::all(&conn) {
         Ok(users) => users,
         Err(_) => return Err(Status::InternalServerError),
     };
 
-    // user from auth (from cookie)
-    let user_info = user_json(auth.user_id, &conn)?;
-
     // render template
     let context = json!({
         "users": users,
-        "user": user_info,
+        "user": user,
         "flash": flash_json(&flash)
     });
     Ok(Template::render("pages/manage_users", &context))
@@ -84,9 +90,9 @@ pub fn manage_account(
     flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Status> {
-    let user_info = user_json(auth.user_id, &conn)?;
+    let user = get_user(auth.user_id, &conn)?;
     let context = json!({
-        "user": user_info,
+        "user": user,
         "flash": flash_json(&flash)
     });
     Ok(Template::render("pages/manage_account", &context))
@@ -95,18 +101,15 @@ pub fn manage_account(
 #[get("/new_user")]
 pub fn new_user(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
     // check permission
-    let user = User::get(auth.user_id, &conn);
-    match user {
-        Ok(user) => {
-            if !user.manage_users {
-                return Err(Status::Forbidden);
-            }
-        }
-        Err(Error::NotFound) => return Err(Status::Unauthorized),
-        Err(_) => return Err(Status::InternalServerError),
-    };
+    let user = get_user(auth.user_id, &conn)?;
+    if !user.manage_users {
+        return Err(Status::Forbidden);
+    }
 
-    let context = just_flash_context(&flash);
+    let context = json!({
+        "user": user,
+        "flash": flash_json(&flash)
+    });
     Ok(Template::render("pages/new_user", &context))
 }
 
@@ -152,23 +155,12 @@ pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Stat
 
 /* --------------------------------- helpers -------------------------------- */
 
-fn user_json(id: i32, conn: &DbConn) -> Result<Value, Status> {
+fn get_user(id: i32, conn: &DbConn) -> Result<User, Status> {
     let user = User::get(id, conn);
     match user {
-        Ok(user) => {
-            if !user.manage_users {
-                return Err(Status::Forbidden);
-            }
-            return Ok(json!({
-                "id": user.id,
-                "name": user.username,
-                "orig": user.orig,
-                "manage_links": user.manage_links,
-                "manage_users": user.manage_users
-            }));
-        }
-        Err(Error::NotFound) => return Err(Status::Unauthorized),
-        Err(_) => return Err(Status::InternalServerError),
+        Ok(user) => Ok(user),
+        Err(Error::NotFound) => Err(Status::Unauthorized),
+        Err(_) => Err(Status::InternalServerError),
     }
 }
 

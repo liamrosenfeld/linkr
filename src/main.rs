@@ -73,10 +73,11 @@ fn rocket() -> rocket::Rocket {
             ],
         )
         .register(catchers![
+            catchers::unauthorized,
+            catchers::forbidden,
             catchers::not_found,
             catchers::internal_error,
-            catchers::unauthorized,
-            catchers::forbidden
+            catchers::service_unavailable
         ])
 }
 

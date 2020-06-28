@@ -2,6 +2,14 @@
 
 A modern self-hosted URL Shortener for both individuals and organizations that’s easy to setup and use
 
+## Deployment
+
+You can deploy with docker to a wide range of hosts as long a you provide these environment variables at runtime:
+
+- `PORT` (Most often passed by the host)
+- `DATABASE_URL` (For the postgres database. Incudes login info for database)
+- `ROCKET_SECRET_KEY` (Used for signing private cookies. Generate it yourself with `openssl rand -base64 32`)
+
 ## Local Development
 
 ### With Cargo

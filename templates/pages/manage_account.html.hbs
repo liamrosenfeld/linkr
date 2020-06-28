@@ -13,36 +13,38 @@
 
   {{> partials/header }}
 
-  <h1>Manage Account</h1>
+  <div id="content">
+    <h1>Manage Account</h1>
 
-  <h2>Username</h2>
+    <h2>Username</h2>
 
-  <form action="/api/users/update/username" method="post">
-    <input type="text" name="username" id="username" value="{{user.name}}" />
-    <input type="submit" value="Save" />
-  </form>
+    <form action="/api/users/update/username" method="post">
+      <input type="text" name="username" id="username" value="{{user.name}}" />
+      <input type="submit" value="Save" />
+    </form>
 
-  <h2>Password</h2>
+    <h2>Password</h2>
 
-  <form action="/api/users/update/password" method="post">
-    <label for="current_pw">Current Password:</label>
-    <input autocomplete="current-password" type="password" name="current_pw" value="" /><br />
-    <label for="new_pw">New Password:</label>
-    <input autocomplete="new-password" type="password" name="new_pw" value="" /><br />
-    <input type="submit" value="Save" />
-  </form>
+    <form action="/api/users/update/password" method="post">
+      <label for="current_pw">Current Password:</label>
+      <input autocomplete="current-password" type="password" name="current_pw" value="" /><br />
+      <label for="new_pw">New Password:</label>
+      <input autocomplete="new-password" type="password" name="new_pw" value="" /><br />
+      <input type="submit" value="Save" />
+    </form>
 
-  <h2>Delete</h2>
+    <h2>Delete</h2>
 
-  {{#if user.orig}}
-  <p>You cannot delete the original user</p>
-  {{else}}
-  <form action="/api/users/delete_current" method="post">
-    <label for="password">Current Password:</label>
-    <input autocomplete="current-password" type="password" name="password" value="" /><br />
-    <input type="submit" value="Delete" />
-  </form>
-  {{/if}}
+    {{#if user.orig}}
+    <p>You cannot delete the original user</p>
+    {{else}}
+    <form action="/api/users/delete_current" method="post">
+      <label for="password">Current Password:</label>
+      <input autocomplete="current-password" type="password" name="password" value="" /><br />
+      <input type="submit" value="Delete" />
+    </form>
+    {{/if}}
+  </div>
 
   {{> partials/footer }}
 </body>

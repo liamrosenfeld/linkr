@@ -65,7 +65,7 @@ pub fn new(
             let to = if orig { "/" } else { "/new_user" };
             Ok(Flash::success(
                 Redirect::to(to),
-                format!("{} created", new_user.username),
+                format!("Account created: {}", new_user.username),
             ))
         }
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(Flash::error(

@@ -37,7 +37,7 @@ fn rocket() -> rocket::Rocket {
         .mount(
             "/",
             routes![
-                routes::links::lookup,
+                routes::pages::link,
                 routes::pages::index,
                 routes::pages::new_user,
                 routes::pages::setup,

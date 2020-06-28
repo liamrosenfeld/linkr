@@ -16,14 +16,6 @@ use crate::models::users::User;
 
 /* --------------------------------- lookup --------------------------------- */
 
-#[get("/<short>", rank = 3)]
-pub fn lookup(conn: DbConn, short: String) -> Result<Redirect, Status> {
-    match Link::get(&short, &conn) {
-        Ok(link) => Ok(Redirect::permanent(link.long)),
-        Err(err) => Err(error_status(err)),
-    }
-}
-
 /* ----------------------------------- api ---------------------------------- */
 
 #[derive(FromForm)]
@@ -52,7 +44,8 @@ pub fn shorten(
 ) -> Result<Flash<Redirect>, Status> {
     let user = match User::get(auth.user_id, &conn) {
         Ok(user) => user,
-        Err(_) => return Err(Status::Unauthorized),
+        Err(Error::NotFound) => return Err(Status::NotFound),
+        Err(_) => return Err(Status::InternalServerError),
     };
 
     let new_link = link_form.into_inner();
@@ -118,7 +111,8 @@ pub struct Short {
 pub fn delete(conn: DbConn, short_form: Form<Short>, auth: Auth) -> Status {
     let user = match User::get(auth.user_id, &conn) {
         Ok(user) => user,
-        Err(_) => return Status::Unauthorized,
+        Err(Error::NotFound) => return Status::NotFound,
+        Err(_) => return Status::InternalServerError,
     };
 
     let short = short_form.into_inner().short;
@@ -134,11 +128,18 @@ pub fn delete(conn: DbConn, short_form: Form<Short>, auth: Auth) -> Status {
     }
 }
 
+#[derive(FromForm)]
+pub struct UpdateLong {
+    short: String,
+    long: String,
+}
+
 #[post("/update", data = "<update_form>")]
-pub fn update(conn: DbConn, update_form: Form<NewLink>, auth: Auth) -> Status {
+pub fn update(conn: DbConn, update_form: Form<UpdateLong>, auth: Auth) -> Status {
     let user = match User::get(auth.user_id, &conn) {
         Ok(user) => user,
-        Err(_) => return Status::Unauthorized,
+        Err(Error::NotFound) => return Status::Unauthorized,
+        Err(_) => return Status::InternalServerError,
     };
 
     let update = update_form.into_inner();

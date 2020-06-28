@@ -10,6 +10,15 @@ use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
 use serde_json::value::Value;
 
+#[get("/<short>", rank = 3)]
+pub fn link(conn: DbConn, short: String) -> Result<Redirect, Status> {
+    match Link::get(&short, &conn) {
+        Ok(link) => Ok(Redirect::permanent(link.long)),
+        Err(Error::NotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
+
 #[get("/")]
 pub fn index(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
     // user from auth (from cookie)

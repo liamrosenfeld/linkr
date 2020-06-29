@@ -22,10 +22,12 @@ use diesel::prelude::*;
 use diesel::result::Error;
 use serde::Serialize;
 
+use crate::models::users::User;
 use crate::schema::links;
 use crate::schema::links::dsl::links as all_links;
 
-#[derive(Queryable, Insertable, Serialize)]
+#[derive(Queryable, Insertable, Serialize, Associations)]
+#[belongs_to(User, foreign_key = "created_by")]
 #[table_name = "links"]
 pub struct Link {
     pub short: String,

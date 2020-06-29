@@ -19,4 +19,6 @@ table! {
     }
 }
 
+joinable!(links -> users (created_by));
+
 allow_tables_to_appear_in_same_query!(links, users,);

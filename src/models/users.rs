@@ -18,7 +18,6 @@
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use diesel::result::Error;
 
 use crate::schema::users;
 use crate::schema::users::dsl::users as all_users;
@@ -77,9 +76,7 @@ impl User {
     }
 
     pub fn delete(id: i32, conn: &PgConnection) -> QueryResult<usize> {
-        if User::get(id, conn).is_err() {
-            return Err(Error::NotFound);
-        };
+        User::get(id, conn)?;
         diesel::delete(all_users.find(id)).execute(conn)
     }
 

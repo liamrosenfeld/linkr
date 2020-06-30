@@ -15,13 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use crate::auth::Auth;
 use crate::db::Conn as DbConn;
 use crate::models::links::Link;
 use crate::models::users::User;
 
 use diesel::result::Error;
-use rocket::http::{Cookie, Cookies, Status};
+use rocket::http::Status;
 use rocket::request::FlashMessage;
 use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
@@ -37,12 +36,9 @@ pub fn link(conn: DbConn, short: String) -> Result<Redirect, Status> {
 }
 
 #[get("/")]
-pub fn index(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
-    // user from auth (from cookie)
-    let user = get_user(auth.user_id, &conn)?;
-
+pub fn index(user: User, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
     // links for table
-    let links = match Link::all_for_user(auth.user_id, &conn) {
+    let links = match Link::all_for_user(user.id, &conn) {
         Ok(links) => links,
         Err(_) => return Err(Status::InternalServerError),
     };
@@ -58,12 +54,11 @@ pub fn index(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Te
 
 #[get("/manage_links")]
 pub fn manage_links(
-    auth: Auth,
+    user: User,
     flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Status> {
-    // user from auth (from cookie)
-    let user = get_user(auth.user_id, &conn)?;
+    // check permission
     if !user.manage_links {
         return Err(Status::Forbidden);
     }
@@ -85,12 +80,11 @@ pub fn manage_links(
 
 #[get("/manage_users")]
 pub fn manage_users(
-    auth: Auth,
+    user: User,
     flash: Option<FlashMessage>,
     conn: DbConn,
 ) -> Result<Template, Status> {
-    // user from auth (from cookie)
-    let user = get_user(auth.user_id, &conn)?;
+    // check permission
     if !user.manage_users {
         return Err(Status::Forbidden);
     }
@@ -111,12 +105,7 @@ pub fn manage_users(
 }
 
 #[get("/manage_account")]
-pub fn manage_account(
-    auth: Auth,
-    flash: Option<FlashMessage>,
-    conn: DbConn,
-) -> Result<Template, Status> {
-    let user = get_user(auth.user_id, &conn)?;
+pub fn manage_account(user: User, flash: Option<FlashMessage>) -> Result<Template, Status> {
     let context = json!({
         "user": user,
         "flash": flash_json(&flash)
@@ -125,9 +114,8 @@ pub fn manage_account(
 }
 
 #[get("/new_user")]
-pub fn new_user(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
+pub fn new_user(user: User, flash: Option<FlashMessage>) -> Result<Template, Status> {
     // check permission
-    let user = get_user(auth.user_id, &conn)?;
     if !user.manage_users {
         return Err(Status::Forbidden);
     }
@@ -140,24 +128,10 @@ pub fn new_user(auth: Auth, flash: Option<FlashMessage>, conn: DbConn) -> Result
 }
 
 #[get("/login")]
-pub fn login(
-    auth: Option<Auth>,
-    flash: Option<FlashMessage>,
-    mut cookies: Cookies,
-    conn: DbConn,
-) -> Result<Template, Redirect> {
-    match auth {
-        Some(auth) => match User::get(auth.user_id, &conn) {
-            Ok(_) => Err(Redirect::to("/")),
-            Err(_) => {
-                cookies.remove_private(Cookie::named("user_id"));
-                drop(cookies); // need to drop before accessing flash
-                let context = just_flash_context(&flash);
-                Ok(Template::render("pages/login", &context))
-            }
-        },
+pub fn login(user: Option<User>, flash: Option<FlashMessage>) -> Result<Template, Redirect> {
+    match user {
+        Some(_) => Err(Redirect::to("/")),
         None => {
-            drop(cookies); // need to drop before accessing flash
             let context = just_flash_context(&flash);
             Ok(Template::render("pages/login", &context))
         }
@@ -180,15 +154,6 @@ pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Stat
 }
 
 /* --------------------------------- helpers -------------------------------- */
-
-fn get_user(id: i32, conn: &DbConn) -> Result<User, Status> {
-    let user = User::get(id, conn);
-    match user {
-        Ok(user) => Ok(user),
-        Err(Error::NotFound) => Err(Status::Unauthorized),
-        Err(_) => Err(Status::InternalServerError),
-    }
-}
 
 fn flash_json(flash: &Option<FlashMessage>) -> Value {
     match flash {

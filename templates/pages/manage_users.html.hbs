@@ -32,7 +32,7 @@
         </thead>
         <tbody>
           {{#each users}}
-          <tr id="{{id}}-row">
+          <tr id="{{id}}-row" {{#if disabled}}class="disabled" {{/if}}>
             <td id="{{id}}-id">{{id}}</td>
             <td>
               <span id="{{id}}-name">{{username}}</span>
@@ -55,7 +55,24 @@
               {{#if orig}}
               <p>Original</p>
               {{else}}
-              <button id="{{id}}-delete" onclick="removeByID('{{id}}')">Delete</button>
+              {{#if disabled}}
+              <form action="/api/users/enable" method="post"
+                onsubmit="return confirm('Are you sure you want to re-enable {{username}}?');">
+                <input type="hidden" id="id" name="id" value="{{id}}">
+                <input type="submit" value="Re-enable">
+              </form>
+              {{else}}
+              <form action="/api/users/disable" method="post"
+                onsubmit="return confirm('Are you sure you want to disable {{username}}?');">
+                <input type="hidden" id="id" name="id" value="{{id}}">
+                <input type="submit" value="Disable">
+              </form>
+              {{/if}}
+              <form action="/api/users/delete" method="post"
+                onsubmit="return confirm('Are you sure you want to permanently delete {{username}} and all their links?');">
+                <input type="hidden" id="id" name="id" value="{{id}}">
+                <input type="submit" value="Delete">
+              </form>
               {{/if}}
             </td>
           </tr>
@@ -63,6 +80,12 @@
         </tbody>
       </table>
     </div>
+    <div class="note">
+      <p>Note:</p>
+      <p>Deleting a user will permanently delete their account <strong>and all their links</strong>. Disabling
+        accounts preserves their links and is able to be undone.</p>
+    </div>
+
 
     <span id="manage-output"> </span>
   </div>

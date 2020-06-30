@@ -32,6 +32,7 @@ pub struct User {
     pub orig: bool,
     pub manage_links: bool,
     pub manage_users: bool,
+    pub disabled: bool,
 }
 
 #[derive(Insertable)]
@@ -78,6 +79,20 @@ impl User {
     pub fn delete(id: i32, conn: &PgConnection) -> QueryResult<usize> {
         User::get(id, conn)?;
         diesel::delete(all_users.find(id)).execute(conn)
+    }
+
+    pub fn disable(id: i32, conn: &PgConnection) -> QueryResult<usize> {
+        use crate::schema::users::dsl::disabled;
+        diesel::update(all_users.find(id))
+            .set(disabled.eq(true))
+            .execute(conn)
+    }
+
+    pub fn enable(id: i32, conn: &PgConnection) -> QueryResult<usize> {
+        use crate::schema::users::dsl::disabled;
+        diesel::update(all_users.find(id))
+            .set(disabled.eq(false))
+            .execute(conn)
     }
 
     pub fn update_permissions(

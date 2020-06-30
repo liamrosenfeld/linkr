@@ -13,7 +13,7 @@
   },
   "[rust]": {
     "editor.tabSize": 4,
-    "editor.defaultFormatter": "matklad.rust-analyzer"
+    "editor.defaultFormatter": "rust-lang.rust"
   },
   "editor.formatOnSave": true,
   "cSpell.words": ["linkr"]

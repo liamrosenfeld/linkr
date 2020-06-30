@@ -15,26 +15,47 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use rocket::http::Status;
+use diesel::result::Error;
+use rocket::http::{Cookie, Status};
 use rocket::request::{FromRequest, Outcome, Request};
 
-pub struct Auth {
-    pub user_id: i32,
-}
+use crate::db::Conn as DbConn;
+use crate::models::users::User;
 
-impl<'a, 'r> FromRequest<'a, 'r> for Auth {
+impl<'a, 'r> FromRequest<'a, 'r> for User {
     type Error = ();
 
-    fn from_request(request: &'a Request<'r>) -> Outcome<Auth, Self::Error> {
-        let auth = request
+    fn from_request(request: &'a Request<'r>) -> Outcome<Self, Self::Error> {
+        // get user_id from cookie
+        let user_id = match request
             .cookies()
             .get_private("user_id")
             .and_then(|cookie| cookie.value().parse::<i32>().ok())
-            .map(|user_id| Auth { user_id });
+        {
+            Some(id) => id,
+            None => return Outcome::Failure((Status::Unauthorized, ())),
+        };
 
-        match auth {
-            Some(auth) => Outcome::Success(auth),
-            None => Outcome::Failure((Status::Unauthorized, ())),
+        // get database connection
+        let conn = request
+            .guard::<DbConn>()
+            .expect("database needs to be connected");
+
+        // get user from database with id and block if disabled
+        match User::get(user_id, &conn) {
+            Ok(user) => {
+                if user.disabled {
+                    Outcome::Failure((Status::Unauthorized, ()))
+                } else {
+                    Outcome::Success(user)
+                }
+            }
+            Err(Error::NotFound) => {
+                // user id is not valid, so it mist be removed to prevent an infinite loop
+                request.cookies().remove_private(Cookie::named("user_id"));
+                Outcome::Failure((Status::Unauthorized, ()))
+            }
+            Err(_) => Outcome::Failure((Status::InternalServerError, ())),
         }
     }
 }

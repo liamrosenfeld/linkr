@@ -16,6 +16,7 @@ table! {
         orig -> Bool,
         manage_links -> Bool,
         manage_users -> Bool,
+        disabled -> Bool,
     }
 }
 

@@ -4,7 +4,8 @@ CREATE TABLE users(
   pw_hash  TEXT NOT NULL,
   orig     BOOLEAN NOT NULL,
   manage_links BOOLEAN NOT NULL,
-  manage_users BOOLEAN NOT NULL
+  manage_users BOOLEAN NOT NULL,
+  disabled     BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE links(

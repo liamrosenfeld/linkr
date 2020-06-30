@@ -19,14 +19,10 @@ use rocket::http::Status;
 use rocket::request::Form;
 use rocket::response::{Flash, Redirect};
 
-use rocket_contrib::json::Json;
-use serde_json::Value;
-
 use chrono::Utc;
 use diesel::result::DatabaseErrorKind;
 use diesel::result::Error;
 
-use crate::auth::Auth;
 use crate::db::Conn as DbConn;
 use crate::models::links::Link;
 use crate::models::users::User;
@@ -38,7 +34,8 @@ pub struct NewLink {
     notes: String,
 }
 
-const RESERVED_LINKS: [&str; 8] = [
+const RESERVED_LINKS: [&str; 9] = [
+    "",
     "api",
     "login",
     "resource",
@@ -53,14 +50,8 @@ const RESERVED_LINKS: [&str; 8] = [
 pub fn shorten(
     conn: DbConn,
     link_form: Form<NewLink>,
-    auth: Auth,
+    user: User,
 ) -> Result<Flash<Redirect>, Status> {
-    let user = match User::get(auth.user_id, &conn) {
-        Ok(user) => user,
-        Err(Error::NotFound) => return Err(Status::NotFound),
-        Err(_) => return Err(Status::InternalServerError),
-    };
-
     let new_link = link_form.into_inner();
 
     // check if the short is alphanumeric
@@ -121,13 +112,7 @@ pub struct Short {
 }
 
 #[post("/delete", data = "<short_form>")]
-pub fn delete(conn: DbConn, short_form: Form<Short>, auth: Auth) -> Status {
-    let user = match User::get(auth.user_id, &conn) {
-        Ok(user) => user,
-        Err(Error::NotFound) => return Status::NotFound,
-        Err(_) => return Status::InternalServerError,
-    };
-
+pub fn delete(conn: DbConn, short_form: Form<Short>, user: User) -> Status {
     let short = short_form.into_inner().short;
 
     match check_can_edit(&user, &short, &conn) {
@@ -137,7 +122,8 @@ pub fn delete(conn: DbConn, short_form: Form<Short>, auth: Auth) -> Status {
 
     match Link::delete(&short, &conn) {
         Ok(_) => Status::Ok,
-        Err(err) => error_status(err),
+        Err(Error::NotFound) => Status::NotFound,
+        Err(_) => Status::InternalServerError,
     }
 }
 
@@ -148,13 +134,7 @@ pub struct UpdateLong {
 }
 
 #[post("/update", data = "<update_form>")]
-pub fn update(conn: DbConn, update_form: Form<UpdateLong>, auth: Auth) -> Status {
-    let user = match User::get(auth.user_id, &conn) {
-        Ok(user) => user,
-        Err(Error::NotFound) => return Status::Unauthorized,
-        Err(_) => return Status::InternalServerError,
-    };
-
+pub fn update(conn: DbConn, update_form: Form<UpdateLong>, user: User) -> Status {
     let update = update_form.into_inner();
 
     match check_can_edit(&user, &update.short, &conn) {
@@ -164,7 +144,9 @@ pub fn update(conn: DbConn, update_form: Form<UpdateLong>, auth: Auth) -> Status
 
     match Link::update(&update.short, &update.long, &conn) {
         Ok(_) => Status::Ok,
-        Err(err) => error_status(err),
+        Err(Error::NotFound) => Status::NotFound,
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Status::Conflict,
+        Err(_) => Status::InternalServerError,
     }
 }
 
@@ -182,22 +164,4 @@ fn check_can_edit(user: &User, short: &str, conn: &DbConn) -> Result<(), Status>
     }
 
     Ok(())
-}
-
-#[get("/all")]
-pub fn all(conn: DbConn) -> Result<Json<Value>, Status> {
-    match Link::all(&conn) {
-        Ok(links) => Ok(Json(json!(links))),
-        Err(err) => Err(error_status(err)),
-    }
-}
-
-/* --------------------------------- helpers -------------------------------- */
-
-fn error_status(err: Error) -> Status {
-    match err {
-        Error::NotFound => Status::NotFound,
-        Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => Status::Conflict,
-        _ => Status::InternalServerError,
-    }
 }

@@ -70,7 +70,6 @@ fn rocket() -> rocket::Rocket {
             "/api/links/",
             routes![
                 routes::links::shorten,
-                routes::links::all,
                 routes::links::delete,
                 routes::links::update
             ],
@@ -82,7 +81,10 @@ fn rocket() -> rocket::Rocket {
                 routes::users::login,
                 routes::users::logout,
                 routes::users::delete_current,
+                routes::users::disable_current,
                 routes::users::delete_by_id,
+                routes::users::disable_by_id,
+                routes::users::enable_by_id,
                 routes::users::update_permissions,
                 routes::users::update_own_username,
                 routes::users::update_username,

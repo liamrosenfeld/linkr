@@ -33,16 +33,39 @@
       <input type="submit" value="Save" />
     </form>
 
-    <h2>Delete</h2>
+    <h2>Disable Account</h2>
 
     {{#if user.orig}}
     <p>You cannot delete the original user</p>
     {{else}}
-    <form action="/api/users/delete_current" method="post">
+    <form action="/api/users/disable_current" method="post"
+      onsubmit="return confirm('Are you sure you want to disable your account?');">
+      <label for="password">Current Password:</label>
+      <input autocomplete="current-password" type="password" name="password" value="" /><br />
+      <input type="submit" value="Disable" />
+    </form>
+
+    <div class="note">
+      <p>Disabling preserves links and is able to be undone by an admin.</p>
+    </div>
+    {{/if}}
+
+    <h2>Delete Account</h2>
+
+    {{#if user.orig}}
+    <p>You cannot delete the original user</p>
+    {{else}}
+    <form action="/api/users/delete_current" method="post"
+      onsubmit="return confirm('Are you sure you want to permanently delete your account?');">
       <label for="password">Current Password:</label>
       <input autocomplete="current-password" type="password" name="password" value="" /><br />
       <input type="submit" value="Delete" />
     </form>
+
+    <div class="note">
+      <p>Deleting your account will also delete <strong>all your links</strong>. Do not delete your account if links you
+        created are still in use.</p>
+    </div>
     {{/if}}
   </div>
 

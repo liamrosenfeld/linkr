@@ -62,7 +62,6 @@ fn rocket() -> rocket::Rocket {
                 routes::pages::manage_links,
                 routes::pages::manage_users,
                 routes::pages::manage_account,
-                routes::static_files::favicon,
                 routes::static_files::all_resources
             ],
         )

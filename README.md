@@ -1,4 +1,4 @@
-# Linkr
+# ![Linkr](static/logo.svg)
 
 A modern self-hosted URL Shortener for both individuals and organizations that’s easy to setup and use
 

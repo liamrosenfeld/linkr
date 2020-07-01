@@ -1,8 +1,20 @@
 # ![Linkr](static/logo.svg)
 
-A modern self-hosted URL Shortener for both individuals and organizations that’s easy to setup and use
+A modern self-hosted URL Shortener for both individuals and organizations that’s easy to set up and use.
+
+Currently this project is still in its early stages. It is a fully functional URL shortener, but many quality of life features are still to come.
 
 ## Deployment
+
+### To Heroku
+
+Just click here and follow the instructions on screen to deploy:
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/liamrosenfeld/linkr/tree/master)
+
+To have logins persist between app refreshes, create an [environment variable](https://heroku.com/deploy?template=https://github.com/liamrosenfeld/linkr/tree/master) with the name `ROCKET_SECRET_KEY` and then run `openssl rand -base64 32` in a terminal and paste the result in the value.
+
+### Elsewhere
 
 You can deploy with docker to a wide range of hosts as long a you provide these environment variables at runtime:
 

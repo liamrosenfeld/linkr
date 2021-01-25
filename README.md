@@ -6,6 +6,8 @@ Currently this project is still in its early stages. It is a fully functional UR
 
 ## Deployment
 
+> Note: Make sure you set up HTTPS (user passwords are transmitted)
+
 ### To Heroku
 
 Just click here and follow the instructions on screen to deploy:
@@ -14,6 +16,8 @@ Just click here and follow the instructions on screen to deploy:
 
 To have logins persist between app refreshes, create an [environment variable](https://heroku.com/deploy?template=https://github.com/liamrosenfeld/linkr/tree/master) with the name `ROCKET_SECRET_KEY` and then run `openssl rand -base64 32` in a terminal and paste the result in the value.
 
+> Note: If using Heroku with Cloudflare use the Heroku app url, not the one they tell you to use when setting up a DNS
+
 ### Elsewhere
 
 You can deploy with docker to a wide range of hosts as long a you provide these environment variables at runtime:
@@ -21,6 +25,11 @@ You can deploy with docker to a wide range of hosts as long a you provide these 
 - `PORT` (Most often passed by the host)
 - `DATABASE_URL` (For the postgres database. Incudes login info for database)
 - `ROCKET_SECRET_KEY` (Used for signing private cookies. Generate it yourself with `openssl rand -base64 32`)
+
+## Setup
+
+1. Go to the page `/setup` to create your first account before you publicly release the website
+2. Go to `/new_user` to create accounts for the rest of your team
 
 ## Local Development
 

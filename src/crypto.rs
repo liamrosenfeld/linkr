@@ -15,8 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use scrypt;
-
+use scrypt::{
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Scrypt
+};
+use rand_core::OsRng;
 use crate::models::users::{InsertableUser, User};
 use crate::routes::users::NewUser;
 
@@ -33,12 +36,13 @@ impl InsertableUser {
 }
 
 pub fn encrypt_pw(pw: &str) -> String {
-    let param = scrypt::ScryptParams::recommended();
-    scrypt::scrypt_simple(pw, &param).expect("System is misconfigured so OsRng does not work")
+    let salt = SaltString::generate(&mut OsRng);
+    Scrypt.hash_password_simple(pw.as_bytes(), salt.as_ref()).unwrap().to_string()
 }
 
 impl User {
     pub fn verify(self: &Self, password: &str) -> bool {
-        scrypt::scrypt_check(password, &self.pw_hash).is_ok()
+        let parsed_hash = PasswordHash::new(&self.pw_hash).unwrap();
+        Scrypt.verify_password(password.as_bytes(), &parsed_hash).is_ok()
     }
 }

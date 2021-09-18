@@ -15,15 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
+use rocket::form::Form;
 use rocket::http::Status;
-use rocket::request::Form;
 use rocket::response::{Flash, Redirect};
 
 use chrono::Utc;
 use diesel::result::DatabaseErrorKind;
 use diesel::result::Error;
 
-use crate::db::Conn as DbConn;
+use crate::db::DbConn;
 use crate::models::links::Link;
 use crate::models::users::User;
 
@@ -47,7 +47,7 @@ const RESERVED_LINKS: [&str; 9] = [
 ];
 
 #[post("/new", data = "<link_form>")]
-pub fn shorten(
+pub async fn shorten(
     conn: DbConn,
     link_form: Form<NewLink>,
     user: User,
@@ -93,7 +93,7 @@ pub fn shorten(
     };
 
     // send database request and respond accordingly
-    match Link::insert(link, &conn) {
+    match Link::insert(link, &conn).await {
         Ok(_) => Ok(Flash::success(Redirect::to("/"), "Link created!")),
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(Flash::error(
             Redirect::to("/"),
@@ -112,15 +112,15 @@ pub struct Short {
 }
 
 #[post("/delete", data = "<short_form>")]
-pub fn delete(conn: DbConn, short_form: Form<Short>, user: User) -> Status {
+pub async fn delete(conn: DbConn, short_form: Form<Short>, user: User) -> Status {
     let short = short_form.into_inner().short;
 
-    match check_can_edit(&user, &short, &conn) {
+    match check_can_edit(&user, &short, &conn).await {
         Ok(_) => {}
         Err(err) => return err,
     }
 
-    match Link::delete(&short, &conn) {
+    match Link::delete(short.to_string(), &conn).await {
         Ok(_) => Status::Ok,
         Err(Error::NotFound) => Status::NotFound,
         Err(_) => Status::InternalServerError,
@@ -134,15 +134,15 @@ pub struct UpdateLong {
 }
 
 #[post("/update", data = "<update_form>")]
-pub fn update(conn: DbConn, update_form: Form<UpdateLong>, user: User) -> Status {
+pub async fn update(conn: DbConn, update_form: Form<UpdateLong>, user: User) -> Status {
     let update = update_form.into_inner();
 
-    match check_can_edit(&user, &update.short, &conn) {
+    match check_can_edit(&user, &update.short, &conn).await {
         Ok(_) => {}
         Err(err) => return err,
     }
 
-    match Link::update(&update.short, &update.long, &conn) {
+    match Link::update(update.short.to_string(), update.long.to_string(), &conn).await {
         Ok(_) => Status::Ok,
         Err(Error::NotFound) => Status::NotFound,
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Status::Conflict,
@@ -150,9 +150,9 @@ pub fn update(conn: DbConn, update_form: Form<UpdateLong>, user: User) -> Status
     }
 }
 
-fn check_can_edit(user: &User, short: &str, conn: &DbConn) -> Result<(), Status> {
+async fn check_can_edit(user: &User, short: &str, conn: &DbConn) -> Result<(), Status> {
     if !user.manage_links {
-        let link_user = match Link::get(&short, &conn) {
+        let link_user = match Link::get(short.to_string(), &conn).await {
             Ok(link) => link.created_by,
             Err(Error::NotFound) => return Err(Status::NotFound),
             Err(_) => return Err(Status::InternalServerError),

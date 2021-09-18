@@ -15,16 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use diesel;
-use diesel::pg::PgConnection;
-use diesel::prelude::*;
+use rocket::serde::Serialize;
+use rocket_sync_db_pools::diesel;
+use rocket_sync_db_pools::diesel::prelude::*;
 
+use crate::db::DbConn;
 use crate::schema::users;
-use crate::schema::users::dsl::users as all_users;
-
-use serde::Serialize;
 
 #[derive(Queryable, Serialize, FromForm)]
+#[serde(crate = "rocket::serde")]
 pub struct User {
     pub id: i32,
     pub username: String,
@@ -53,79 +52,101 @@ struct PermissionForm {
 }
 
 impl User {
-    pub fn get(id: i32, conn: &PgConnection) -> QueryResult<User> {
-        all_users.find(id).get_result::<User>(conn)
+    pub async fn get(id: i32, db: &DbConn) -> QueryResult<User> {
+        db.run(move |conn| users::table.find(id).get_result(conn))
+            .await
     }
 
-    pub fn get_by_name(name: &str, conn: &PgConnection) -> QueryResult<User> {
+    pub async fn get_by_name(name: String, db: &DbConn) -> QueryResult<User> {
         use crate::schema::users::dsl::username;
-
-        all_users
-            .distinct()
-            .filter(username.eq(name))
-            .get_result::<User>(conn)
+        db.run(move |conn| {
+            users::table
+                .distinct()
+                .filter(username.eq(name))
+                .get_result(conn)
+        })
+        .await
     }
 
-    pub fn all(conn: &PgConnection) -> QueryResult<Vec<User>> {
-        all_users.order(users::id.desc()).get_results::<User>(conn)
+    pub async fn all(db: &DbConn) -> QueryResult<Vec<User>> {
+        db.run(move |conn| users::table.order(users::id.desc()).load(conn))
+            .await
     }
 
-    pub fn insert(user: &InsertableUser, conn: &PgConnection) -> QueryResult<User> {
-        diesel::insert_into(users::table)
-            .values(user)
-            .get_result::<User>(conn)
+    pub async fn insert(user: InsertableUser, db: &DbConn) -> QueryResult<User> {
+        db.run(move |conn| {
+            diesel::insert_into(users::table)
+                .values(user)
+                .get_result::<User>(conn)
+        })
+        .await
     }
 
-    pub fn delete(id: i32, conn: &PgConnection) -> QueryResult<usize> {
-        User::get(id, conn)?;
-        diesel::delete(all_users.find(id)).execute(conn)
+    pub async fn delete(id: i32, db: &DbConn) -> QueryResult<usize> {
+        User::get(id, db).await?;
+        db.run(move |conn| diesel::delete(users::table.find(id)).execute(conn))
+            .await
     }
 
-    pub fn disable(id: i32, conn: &PgConnection) -> QueryResult<usize> {
+    pub async fn disable(id: i32, db: &DbConn) -> QueryResult<usize> {
         use crate::schema::users::dsl::disabled;
-        diesel::update(all_users.find(id))
-            .set(disabled.eq(true))
-            .execute(conn)
+        db.run(move |conn| {
+            diesel::update(users::table.find(id))
+                .set(disabled.eq(true))
+                .execute(conn)
+        })
+        .await
     }
 
-    pub fn enable(id: i32, conn: &PgConnection) -> QueryResult<usize> {
+    pub async fn enable(id: i32, db: &DbConn) -> QueryResult<usize> {
         use crate::schema::users::dsl::disabled;
-        diesel::update(all_users.find(id))
-            .set(disabled.eq(false))
-            .execute(conn)
+        db.run(move |conn| {
+            diesel::update(users::table.find(id))
+                .set(disabled.eq(false))
+                .execute(conn)
+        })
+        .await
     }
 
-    pub fn update_permissions(
+    pub async fn update_permissions(
         id: i32,
         manage_links: bool,
         manage_users: bool,
-        conn: &PgConnection,
+        db: &DbConn,
     ) -> QueryResult<usize> {
-        diesel::update(all_users.find(id))
-            .set(&PermissionForm {
-                manage_links,
-                manage_users,
-            })
-            .execute(conn)
+        db.run(move |conn| {
+            diesel::update(users::table.find(id))
+                .set(&PermissionForm {
+                    manage_links,
+                    manage_users,
+                })
+                .execute(conn)
+        })
+        .await
     }
 
-    pub fn update_username(id: i32, new_name: &str, conn: &PgConnection) -> QueryResult<usize> {
+    pub async fn update_username(id: i32, new_name: String, db: &DbConn) -> QueryResult<usize> {
         use crate::schema::users::dsl::username;
-
-        diesel::update(all_users.find(id))
-            .set(username.eq(new_name))
-            .execute(conn)
+        db.run(move |conn| {
+            diesel::update(users::table.find(id))
+                .set(username.eq(new_name))
+                .execute(conn)
+        })
+        .await
     }
 
-    pub fn update_password(id: i32, new_pw_hash: &str, conn: &PgConnection) -> QueryResult<usize> {
+    pub async fn update_password(id: i32, new_pw_hash: String, db: &DbConn) -> QueryResult<usize> {
         use crate::schema::users::dsl::pw_hash;
-
-        diesel::update(all_users.find(id))
-            .set(pw_hash.eq(new_pw_hash))
-            .execute(conn)
+        db.run(move |conn| {
+            diesel::update(users::table.find(id))
+                .set(pw_hash.eq(new_pw_hash))
+                .execute(conn)
+        })
+        .await
     }
 
-    pub fn count(conn: &PgConnection) -> QueryResult<i64> {
-        all_users.select(diesel::dsl::count_star()).first(conn)
+    pub async fn count(db: &DbConn) -> QueryResult<i64> {
+        db.run(move |conn| users::table.select(diesel::dsl::count_star()).first(conn))
+            .await
     }
 }

@@ -16,10 +16,12 @@
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
 use rocket::response::Redirect;
-use rocket_contrib::templates::Template;
-use serde::Serialize;
+use rocket::serde::json::serde_json::json;
+use rocket::serde::Serialize;
+use rocket_dyn_templates::Template;
 
 #[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
 struct ErrorContext {
     code: u32,
     message: &'static str,

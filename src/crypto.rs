@@ -15,13 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use scrypt::{
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Scrypt
-};
-use rand_core::OsRng;
 use crate::models::users::{InsertableUser, User};
 use crate::routes::users::NewUser;
+use rand_core::OsRng;
+use scrypt::{
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Scrypt,
+};
 
 impl InsertableUser {
     pub fn new_from_plain(new_user: NewUser, orig: bool) -> InsertableUser {
@@ -37,12 +37,17 @@ impl InsertableUser {
 
 pub fn encrypt_pw(pw: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
-    Scrypt.hash_password_simple(pw.as_bytes(), salt.as_ref()).unwrap().to_string()
+    Scrypt
+        .hash_password(pw.as_bytes(), salt.as_ref())
+        .unwrap()
+        .to_string()
 }
 
 impl User {
     pub fn verify(self: &Self, password: &str) -> bool {
         let parsed_hash = PasswordHash::new(&self.pw_hash).unwrap();
-        Scrypt.verify_password(password.as_bytes(), &parsed_hash).is_ok()
+        Scrypt
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok()
     }
 }

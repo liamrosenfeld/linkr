@@ -19,13 +19,14 @@ use diesel::result::Error;
 use rocket::http::{Cookie, Status};
 use rocket::request::{FromRequest, Outcome, Request};
 
-use crate::db::Conn as DbConn;
+use crate::db::DbConn;
 use crate::models::users::User;
 
-impl<'a, 'r> FromRequest<'a, 'r> for User {
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for User {
     type Error = ();
 
-    fn from_request(request: &'a Request<'r>) -> Outcome<Self, Self::Error> {
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         // get user_id from cookie
         let user_id = match request
             .cookies()
@@ -39,10 +40,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
         // get database connection
         let conn = request
             .guard::<DbConn>()
+            .await
             .expect("database needs to be connected");
 
         // get user from database with id and block if disabled
-        match User::get(user_id, &conn) {
+        match User::get(user_id, &conn).await {
             Ok(user) => {
                 if user.disabled {
                     Outcome::Failure((Status::Unauthorized, ()))

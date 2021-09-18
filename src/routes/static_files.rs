@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use rocket::response::NamedFile;
+use rocket::fs::NamedFile;
 use std::path::{Path, PathBuf};
 
 #[get("/resource/<file..>", rank = 2)]
-pub fn all_resources(file: PathBuf) -> Option<NamedFile> {
-    NamedFile::open(Path::new("static/").join(file)).ok()
+pub async fn all_resources(file: PathBuf) -> Option<NamedFile> {
+    NamedFile::open(Path::new("static/").join(file)).await.ok()
 }

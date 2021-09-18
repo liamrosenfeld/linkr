@@ -15,16 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use diesel::result::DatabaseErrorKind;
-use diesel::result::Error;
-use diesel::PgConnection;
-use diesel::QueryResult;
-use rocket::http::{Cookie, Cookies, Status};
-use rocket::request::Form;
+use rocket::form::Form;
+use rocket::http::{Cookie, CookieJar, Status};
 use rocket::response::{Flash, Redirect};
+use rocket_sync_db_pools::diesel::result::DatabaseErrorKind;
+use rocket_sync_db_pools::diesel::result::Error;
+use rocket_sync_db_pools::diesel::QueryResult;
 
 use crate::crypto::encrypt_pw;
-use crate::db::Conn as DbConn;
+use crate::db::DbConn;
 use crate::models::users::{InsertableUser, User};
 
 /* ----------------------------------- new ---------------------------------- */
@@ -38,10 +37,10 @@ pub struct NewUser {
 }
 
 #[post("/new", data = "<new_user_form>")]
-pub fn new(
+pub async fn new(
     new_user_form: Form<NewUser>,
     user: Option<User>,
-    mut cookies: Cookies<'_>,
+    cookies: &CookieJar<'_>,
     conn: DbConn,
 ) -> Result<Flash<Redirect>, Status> {
     // if user is authorized and has manage user permission, allow creation of not original
@@ -57,7 +56,7 @@ pub fn new(
                 false
             }
         }
-        None => match User::count(&conn) {
+        None => match User::count(&conn).await {
             Ok(count) => {
                 if count == 0 {
                     true
@@ -90,7 +89,7 @@ pub fn new(
     let new_user = InsertableUser::new_from_plain(user_info, orig);
 
     // insert user
-    match User::insert(&new_user, &conn) {
+    match User::insert(new_user, &conn).await {
         Ok(new_user) => {
             if orig {
                 cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
@@ -120,9 +119,13 @@ pub struct Login {
 }
 
 #[post("/login", data = "<user_form>")]
-pub fn login(user_form: Form<Login>, mut cookies: Cookies<'_>, conn: DbConn) -> Flash<Redirect> {
+pub async fn login(
+    user_form: Form<Login>,
+    cookies: &CookieJar<'_>,
+    conn: DbConn,
+) -> Flash<Redirect> {
     let login = user_form.into_inner();
-    match User::get_by_name(&login.username, &conn) {
+    match User::get_by_name(login.username, &conn).await {
         Ok(selected_user) => {
             if selected_user.disabled {
                 return Flash::error(Redirect::to("/login"), "That user is disabled");
@@ -139,7 +142,7 @@ pub fn login(user_form: Form<Login>, mut cookies: Cookies<'_>, conn: DbConn) -> 
 }
 
 #[get("/logout")]
-pub fn logout(mut cookies: Cookies<'_>) -> Redirect {
+pub async fn logout(cookies: &CookieJar<'_>) -> Redirect {
     cookies.remove_private(Cookie::named("user_id"));
     Redirect::to("/login")
 }
@@ -152,33 +155,30 @@ pub struct ID {
 }
 
 #[post("/delete", data = "<id_form>")]
-pub fn delete_by_id(
-    id_form: Form<ID>,
-    user: User,
-    conn: DbConn,
-) -> Result<Flash<Redirect>, Status> {
+pub async fn delete_by_id(id_form: Form<ID>, user: User, conn: DbConn) -> Flash<Redirect> {
     let action_id = id_form.into_inner().id;
-    destruct_by_id(action_id, &user, &conn, "delete", User::delete)
+    if let Err(flash) = check_destruct_other(action_id, &user, &conn, "delete").await {
+        return flash;
+    }
+    match_destruct_result_other(User::delete(action_id, &conn).await, "delete")
 }
 
 #[post("/disable", data = "<id_form>")]
-pub fn disable_by_id(
-    id_form: Form<ID>,
-    user: User,
-    conn: DbConn,
-) -> Result<Flash<Redirect>, Status> {
+pub async fn disable_by_id(id_form: Form<ID>, user: User, conn: DbConn) -> Flash<Redirect> {
     let action_id = id_form.into_inner().id;
-    destruct_by_id(action_id, &user, &conn, "disable", User::disable)
+    if let Err(flash) = check_destruct_other(action_id, &user, &conn, "disable").await {
+        return flash;
+    }
+    match_destruct_result_other(User::disable(action_id, &conn).await, "disable")
 }
 
 #[post("/enable", data = "<id_form>")]
-pub fn enable_by_id(
-    id_form: Form<ID>,
-    user: User,
-    conn: DbConn,
-) -> Result<Flash<Redirect>, Status> {
+pub async fn enable_by_id(id_form: Form<ID>, user: User, conn: DbConn) -> Flash<Redirect> {
     let action_id = id_form.into_inner().id;
-    destruct_by_id(action_id, &user, &conn, "enable", User::enable)
+    if let Err(flash) = check_destruct_other(action_id, &user, &conn, "enable").await {
+        return flash;
+    }
+    match_destruct_result_other(User::enable(action_id, &conn).await, "enable")
 }
 
 #[derive(FromForm)]
@@ -187,103 +187,116 @@ pub struct Password {
 }
 
 #[post("/delete_current", data = "<pw_form>")]
-pub fn delete_current(
+pub async fn delete_current(
     pw_form: Form<Password>,
     user: User,
-    mut cookies: Cookies<'_>,
+    cookies: &CookieJar<'_>,
     conn: DbConn,
-) -> Result<Flash<Redirect>, Status> {
+) -> Flash<Redirect> {
     let pw = pw_form.into_inner().password;
-    destruct_current(&pw, &user, &mut cookies, &conn, "delete", User::delete)
+    if let Err(flash) = check_destruct_current(&pw, &user, "delete") {
+        return flash;
+    }
+    match_result_current(User::delete(user.id, &conn).await, cookies, "delete")
 }
 
 #[post("/disable_current", data = "<pw_form>")]
-pub fn disable_current(
+pub async fn disable_current(
     pw_form: Form<Password>,
     user: User,
-    mut cookies: Cookies<'_>,
+    cookies: &CookieJar<'_>,
     conn: DbConn,
-) -> Result<Flash<Redirect>, Status> {
+) -> Flash<Redirect> {
     let pw = pw_form.into_inner().password;
-    destruct_current(&pw, &user, &mut cookies, &conn, "disable", User::disable)
+    if let Err(flash) = check_destruct_current(&pw, &user, "disable") {
+        return flash;
+    }
+    match_result_current(User::disable(user.id, &conn).await, cookies, "disable")
 }
 
-fn destruct_by_id<F>(
+fn match_destruct_result_other(result: QueryResult<usize>, verb: &'static str) -> Flash<Redirect> {
+    match result {
+        Ok(_) => Flash::success(Redirect::to("/manage_users"), format!("User {}d.", verb)),
+        Err(Error::NotFound) => {
+            Flash::error(Redirect::to("/manage_users"), "That user cannot be found.")
+        }
+        Err(_) => Flash::error(
+            Redirect::to("/manage_users"),
+            "An internal server error occurred.",
+        ),
+    }
+}
+
+fn match_result_current(
+    result: QueryResult<usize>,
+    cookies: &CookieJar<'_>,
+    verb: &'static str,
+) -> Flash<Redirect> {
+    match result {
+        Ok(_) => {
+            cookies.remove_private(Cookie::named("user_id"));
+            Flash::success(Redirect::to("/login"), format!("User {}d", verb))
+        }
+        Err(Error::NotFound) => Flash::error(Redirect::to("/"), "That user does not exist."),
+        Err(_) => Flash::error(
+            Redirect::to("/manage_account"),
+            "An internal server error occurred",
+        ),
+    }
+}
+
+pub async fn check_destruct_other(
     action_id: i32,
     current_user: &User,
     conn: &DbConn,
-    verb: &'static str,
-    action: F,
-) -> Result<Flash<Redirect>, Status>
-where
-    F: Fn(i32, &PgConnection) -> QueryResult<usize>,
-{
+    verb: &str,
+) -> Result<(), Flash<Redirect>> {
     if action_id == current_user.id {
-        return Ok(Flash::error(
+        return Err(Flash::error(
             Redirect::to("/manage_users"),
             format!("You can only {} yourself in account settings", verb),
         ));
     }
 
     if current_user.manage_users {
-        match User::get(action_id, conn) {
+        match User::get(action_id, conn).await {
             // block if user deleted is original
             Ok(delete_user) => {
                 if delete_user.orig {
-                    return Ok(Flash::error(
+                    return Err(Flash::error(
                         Redirect::to("/manage_users"),
                         format!("You cannot {} the original user", verb),
                     ));
                 }
             }
             Err(Error::NotFound) => {
-                return Ok(Flash::error(
+                return Err(Flash::error(
                     Redirect::to("/manage_users"),
                     "That user cannot be found.",
                 ))
             }
             Err(_) => {
-                return Ok(Flash::error(
+                return Err(Flash::error(
                     Redirect::to("/manage_users"),
                     "An internal server error occurred.",
                 ))
             }
         }
-
-        // delete user
-        match action(action_id, conn) {
-            Ok(_) => Ok(Flash::success(
-                Redirect::to("/manage_users"),
-                format!("User {}d.", verb),
-            )),
-            Err(Error::NotFound) => Ok(Flash::error(
-                Redirect::to("/manage_users"),
-                "That user cannot be found.",
-            )),
-            Err(_) => Ok(Flash::error(
-                Redirect::to("/manage_users"),
-                "An internal server error occurred.",
-            )),
-        }
     } else {
-        Err(Status::Forbidden)
+        return Err(Flash::error(Redirect::to("/"), "You cannot manage users."));
     }
+
+    return Ok(());
 }
 
-pub fn destruct_current<F>(
+pub fn check_destruct_current(
     pw: &str,
     user: &User,
-    cookies: &mut Cookies<'_>,
-    conn: &DbConn,
     verb: &'static str,
-    action: F,
-) -> Result<Flash<Redirect>, Status>
-where
-    F: Fn(i32, &PgConnection) -> QueryResult<usize>,
-{
+) -> Result<(), Flash<Redirect>> {
     // block if user to delete is original
     if user.orig {
-        return Ok(Flash::error(
+        return Err(Flash::error(
             Redirect::to("/manage_users"),
             format!("You cannot {} the original user", verb),
         ));
@@ -291,33 +304,18 @@ where
 
     // check password
     if pw == "" {
-        return Ok(Flash::error(
+        return Err(Flash::error(
             Redirect::to("/manage_account"),
             "Enter your current password to delete your account",
         ));
     }
     if !user.verify(pw) {
-        return Ok(Flash::error(
+        return Err(Flash::error(
             Redirect::to("/manage_account"),
             "Incorrect password",
         ));
     }
-
-    // delete user
-    match action(user.id, conn) {
-        Ok(_) => {
-            cookies.remove_private(Cookie::named("user_id"));
-            Ok(Flash::success(
-                Redirect::to("/login"),
-                format!("User {}d", verb),
-            ))
-        }
-        Err(Error::NotFound) => Err(Status::Unauthorized),
-        Err(_) => Ok(Flash::error(
-            Redirect::to("/manage_account"),
-            "An internal server error occurred",
-        )),
-    }
+    return Ok(());
 }
 
 /* --------------------------------- update --------------------------------- */
@@ -330,7 +328,7 @@ pub struct PermissionsUpdate {
 }
 
 #[post("/update/permissions", data = "<permissions_form>")]
-pub fn update_permissions(
+pub async fn update_permissions(
     permissions_form: Form<PermissionsUpdate>,
     user: User,
     conn: DbConn,
@@ -346,7 +344,9 @@ pub fn update_permissions(
         permissions.manage_links,
         permissions.manage_users,
         &conn,
-    ) {
+    )
+    .await
+    {
         Ok(_) => Status::Ok,
         Err(Error::NotFound) => Status::NotFound,
         Err(_) => Status::InternalServerError,
@@ -360,7 +360,11 @@ pub struct UsernameUpdate {
 }
 
 #[post("/update/username", data = "<username_form>", rank = 1)]
-pub fn update_username(username_form: Form<UsernameUpdate>, user: User, conn: DbConn) -> Status {
+pub async fn update_username(
+    username_form: Form<UsernameUpdate>,
+    user: User,
+    conn: DbConn,
+) -> Status {
     let username_update = username_form.into_inner();
 
     // anyone can change their own username
@@ -369,7 +373,7 @@ pub fn update_username(username_form: Form<UsernameUpdate>, user: User, conn: Db
         return Status::Forbidden;
     }
 
-    match User::update_username(username_update.user_id, &username_update.new_name, &conn) {
+    match User::update_username(username_update.user_id, username_update.new_name, &conn).await {
         Ok(_) => Status::Ok,
         Err(Error::NotFound) => Status::NotFound,
         Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Status::Conflict,
@@ -383,14 +387,14 @@ pub struct NewUsername {
 }
 
 #[post("/update/username", data = "<username_form>", rank = 2)]
-pub fn update_own_username(
+pub async fn update_own_username(
     username_form: Form<NewUsername>,
     user: User,
     conn: DbConn,
 ) -> Result<Flash<Redirect>, Status> {
     let new_name = username_form.into_inner().username;
 
-    match User::update_username(user.id, &new_name, &conn) {
+    match User::update_username(user.id, new_name, &conn).await {
         Ok(_) => Ok(Flash::success(
             Redirect::to("/manage_account"),
             "Username Updated!",
@@ -414,10 +418,10 @@ pub struct PasswordUpdate {
 }
 
 #[post("/update/password", data = "<pw_form>")]
-pub fn update_password(
+pub async fn update_password(
     pw_form: Form<PasswordUpdate>,
     user: User,
-    mut cookies: Cookies<'_>,
+    cookies: &CookieJar<'_>,
     conn: DbConn,
 ) -> Result<Flash<Redirect>, Status> {
     let passwords = pw_form.into_inner();
@@ -438,7 +442,7 @@ pub fn update_password(
 
     let pw_hash = encrypt_pw(&passwords.new_pw);
 
-    match User::update_password(user.id, &pw_hash, &conn) {
+    match User::update_password(user.id, pw_hash, &conn).await {
         Ok(_) => {
             cookies.remove_private(Cookie::named("user_id"));
             Ok(Flash::success(Redirect::to("/login"), "Password changed!"))

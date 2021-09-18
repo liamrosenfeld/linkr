@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use crate::db::Conn as DbConn;
+use crate::db::DbConn;
 use crate::models::links::Link;
 use crate::models::users::User;
 
@@ -23,12 +23,13 @@ use diesel::result::Error;
 use rocket::http::Status;
 use rocket::request::FlashMessage;
 use rocket::response::Redirect;
-use rocket_contrib::templates::Template;
-use serde_json::value::Value;
+use rocket::serde::json::serde_json::json;
+use rocket::serde::json::Value;
+use rocket_dyn_templates::Template;
 
 #[get("/<short>", rank = 3)]
-pub fn link(conn: DbConn, short: String) -> Result<Redirect, Status> {
-    match Link::get(&short, &conn) {
+pub async fn link(conn: DbConn, short: String) -> Result<Redirect, Status> {
+    match Link::get(short.to_string(), &conn).await {
         Ok(link) => Ok(Redirect::permanent(link.long)),
         Err(Error::NotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
@@ -36,9 +37,13 @@ pub fn link(conn: DbConn, short: String) -> Result<Redirect, Status> {
 }
 
 #[get("/")]
-pub fn index(user: User, flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
+pub async fn index(
+    user: User,
+    flash: Option<FlashMessage<'_>>,
+    conn: DbConn,
+) -> Result<Template, Status> {
     // links for table
-    let links = match Link::all_for_user(user.id, &conn) {
+    let links = match Link::all_for_user(user.id, &conn).await {
         Ok(links) => links,
         Err(_) => return Err(Status::InternalServerError),
     };
@@ -53,9 +58,9 @@ pub fn index(user: User, flash: Option<FlashMessage>, conn: DbConn) -> Result<Te
 }
 
 #[get("/manage_links")]
-pub fn manage_links(
+pub async fn manage_links(
     user: User,
-    flash: Option<FlashMessage>,
+    flash: Option<FlashMessage<'_>>,
     conn: DbConn,
 ) -> Result<Template, Status> {
     // check permission
@@ -64,7 +69,7 @@ pub fn manage_links(
     }
 
     // links for table
-    let links = match Link::all(&conn) {
+    let links = match Link::all(&conn).await {
         Ok(links) => links,
         Err(_) => return Err(Status::InternalServerError),
     };
@@ -79,9 +84,9 @@ pub fn manage_links(
 }
 
 #[get("/manage_users")]
-pub fn manage_users(
+pub async fn manage_users(
     user: User,
-    flash: Option<FlashMessage>,
+    flash: Option<FlashMessage<'_>>,
     conn: DbConn,
 ) -> Result<Template, Status> {
     // check permission
@@ -90,7 +95,7 @@ pub fn manage_users(
     }
 
     // links for table
-    let users = match User::all(&conn) {
+    let users = match User::all(&conn).await {
         Ok(users) => users,
         Err(_) => return Err(Status::InternalServerError),
     };
@@ -105,7 +110,10 @@ pub fn manage_users(
 }
 
 #[get("/manage_account")]
-pub fn manage_account(user: User, flash: Option<FlashMessage>) -> Result<Template, Status> {
+pub async fn manage_account(
+    user: User,
+    flash: Option<FlashMessage<'_>>,
+) -> Result<Template, Status> {
     let context = json!({
         "user": user,
         "flash": flash_json(&flash)
@@ -114,7 +122,7 @@ pub fn manage_account(user: User, flash: Option<FlashMessage>) -> Result<Templat
 }
 
 #[get("/new_user")]
-pub fn new_user(user: User, flash: Option<FlashMessage>) -> Result<Template, Status> {
+pub async fn new_user(user: User, flash: Option<FlashMessage<'_>>) -> Result<Template, Status> {
     // check permission
     if !user.manage_users {
         return Err(Status::Forbidden);
@@ -128,7 +136,10 @@ pub fn new_user(user: User, flash: Option<FlashMessage>) -> Result<Template, Sta
 }
 
 #[get("/login")]
-pub fn login(user: Option<User>, flash: Option<FlashMessage>) -> Result<Template, Redirect> {
+pub async fn login(
+    user: Option<User>,
+    flash: Option<FlashMessage<'_>>,
+) -> Result<Template, Redirect> {
     match user {
         Some(_) => Err(Redirect::to("/")),
         None => {
@@ -139,8 +150,8 @@ pub fn login(user: Option<User>, flash: Option<FlashMessage>) -> Result<Template
 }
 
 #[get("/setup")]
-pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Status> {
-    match User::count(&conn) {
+pub async fn setup(flash: Option<FlashMessage<'_>>, conn: DbConn) -> Result<Template, Status> {
+    match User::count(&conn).await {
         Ok(count) => {
             if count == 0 {
                 let context = just_flash_context(&flash);
@@ -155,22 +166,22 @@ pub fn setup(flash: Option<FlashMessage>, conn: DbConn) -> Result<Template, Stat
 
 /* --------------------------------- helpers -------------------------------- */
 
-fn flash_json(flash: &Option<FlashMessage>) -> Value {
+fn flash_json(flash: &Option<FlashMessage<'_>>) -> Value {
     match flash {
         Some(flash) => json!({
-            "type": flash.name(),
-            "msg": flash.msg(),
+            "type": flash.kind(),
+            "msg": flash.message(),
         }),
         None => json!(null),
     }
 }
 
-fn just_flash_context(flash: &Option<FlashMessage>) -> Value {
+fn just_flash_context(flash: &Option<FlashMessage<'_>>) -> Value {
     match flash {
         Some(flash) => json!({
             "flash": {
-                "type": flash.name(),
-                "msg": flash.msg(),
+                "type": flash.kind(),
+                "msg": flash.message(),
             }
         }),
         None => json!(null),

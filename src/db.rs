@@ -15,40 +15,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use diesel::pg::PgConnection;
-use diesel::r2d2;
-use diesel::r2d2::ConnectionManager;
-use rocket::http::Status;
-use rocket::request::{self, FromRequest};
-use rocket::{Outcome, Request, State};
-use std::ops::Deref;
+use dotenv::dotenv;
+use rocket::figment::{
+    util::map,
+    value::{Map, Value},
+    Figment,
+};
+use rocket_sync_db_pools::diesel;
+use std::env;
 
-pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+#[database("db")]
+pub struct DbConn(diesel::PgConnection);
 
-pub fn init_pool(db_url: String) -> Pool {
-    let manager = ConnectionManager::<PgConnection>::new(db_url);
-    r2d2::Pool::new(manager).expect("db pool failure")
-}
+pub fn db_configurator() -> Figment {
+    // create get database url
+    dotenv().ok();
+    let database_url = env::var("DATABASE_URL").expect("set DATABASE_URL");
 
-pub struct Conn(pub r2d2::PooledConnection<ConnectionManager<PgConnection>>);
+    let db: Map<_, Value> = map! {
+        "url" => database_url.into()
+    };
 
-impl<'a, 'r> FromRequest<'a, 'r> for Conn {
-    type Error = ();
-
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<Conn, ()> {
-        let pool = request.guard::<State<Pool>>()?;
-        match pool.get() {
-            Ok(conn) => Outcome::Success(Conn(conn)),
-            Err(_) => Outcome::Failure((Status::ServiceUnavailable, ())),
-        }
-    }
-}
-
-impl Deref for Conn {
-    type Target = PgConnection;
-
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    rocket::Config::figment().merge(("databases", map!["db" => db]))
 }

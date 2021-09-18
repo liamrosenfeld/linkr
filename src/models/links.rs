@@ -16,17 +16,16 @@
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
 use chrono::{DateTime, Utc};
-use diesel;
-use diesel::pg::PgConnection;
-use diesel::prelude::*;
-use diesel::result::Error;
-use serde::Serialize;
+use rocket::serde::Serialize;
+use rocket_sync_db_pools::diesel;
+use rocket_sync_db_pools::diesel::prelude::*;
 
+use crate::db::DbConn;
 use crate::models::users::User;
 use crate::schema::links;
-use crate::schema::links::dsl::links as all_links;
 
 #[derive(Queryable, Insertable, Serialize, Associations)]
+#[serde(crate = "rocket::serde")]
 #[belongs_to(User, foreign_key = "created_by")]
 #[table_name = "links"]
 pub struct Link {
@@ -39,44 +38,57 @@ pub struct Link {
 }
 
 impl Link {
-    pub fn get(short: &str, conn: &PgConnection) -> QueryResult<Link> {
-        all_links.find(short).get_result::<Link>(conn)
+    pub async fn get(short: String, db: &DbConn) -> QueryResult<Link> {
+        db.run(move |conn| links::table.find(short).get_result::<Link>(conn))
+            .await
     }
 
-    pub fn all(conn: &PgConnection) -> QueryResult<Vec<Link>> {
-        all_links
-            .order(links::created_at.desc())
-            .get_results::<Link>(conn)
+    pub async fn all(db: &DbConn) -> QueryResult<Vec<Link>> {
+        db.run(move |conn| {
+            links::table
+                .order(links::created_at.desc())
+                .get_results::<Link>(conn)
+        })
+        .await
     }
 
-    pub fn all_for_user(user_id: i32, conn: &PgConnection) -> QueryResult<Vec<Link>> {
+    pub async fn all_for_user(user_id: i32, db: &DbConn) -> QueryResult<Vec<Link>> {
         use crate::schema::links::dsl::created_by;
-
-        all_links
-            .filter(created_by.eq(user_id))
-            .order(links::created_at.desc())
-            .get_results::<Link>(conn)
+        db.run(move |conn| {
+            links::table
+                .filter(created_by.eq(user_id))
+                .order(links::created_at.desc())
+                .get_results::<Link>(conn)
+        })
+        .await
     }
 
-    pub fn update(short: &str, new_long: &str, conn: &PgConnection) -> QueryResult<Link> {
+    pub async fn update(short: String, new_long: String, db: &DbConn) -> QueryResult<Link> {
         use crate::schema::links::dsl::long;
-
-        diesel::update(all_links.find(short))
-            .set(long.eq(new_long))
-            .get_result::<Link>(conn)
+        db.run(move |conn| {
+            diesel::update(links::table.find(short))
+                .set(long.eq(new_long))
+                .get_result::<Link>(conn)
+        })
+        .await
     }
 
-    pub fn insert(link: Link, conn: &PgConnection) -> QueryResult<usize> {
-        diesel::insert_into(links::table)
-            .values(&link)
-            .execute(conn)
+    pub async fn insert(link: Link, db: &DbConn) -> QueryResult<usize> {
+        db.run(move |conn| {
+            diesel::insert_into(links::table)
+                .values(&link)
+                .execute(conn)
+        })
+        .await
     }
 
-    pub fn delete(short: &str, conn: &PgConnection) -> QueryResult<usize> {
-        if Link::get(short, conn).is_err() {
-            return Err(Error::NotFound);
-        };
-        diesel::delete(all_links.find(short)).execute(conn)
+    pub async fn delete(short: String, db: &DbConn) -> QueryResult<usize> {
+        // if Link::get(short, conn).is_err() {
+        //     return Err(Error::NotFound);
+        // };
+        Link::get(short.clone(), db).await?;
+        db.run(move |conn| diesel::delete(links::table.find(short)).execute(conn))
+            .await
     }
 }
 
@@ -84,7 +96,7 @@ impl Link {
 
 mod date_format {
     use chrono::{DateTime, Utc};
-    use serde::{self, Serializer};
+    use rocket::serde::Serializer;
 
     const FORMAT: &'static str = "%D";
 

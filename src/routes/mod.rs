@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
+pub mod client;
 pub mod links;
-pub mod pages;
-pub mod static_files;
 pub mod users;

@@ -5,16 +5,21 @@
   "[html]": {
     "editor.tabSize": 2
   },
-  "[hbs]": {
+  "[svelte]": {
     "editor.tabSize": 2
   },
   "[javascript]": {
     "editor.tabSize": 4
   },
+  "[typescript]": {
+    "editor.tabSize": 4
+  },
   "[rust]": {
     "editor.tabSize": 4,
-    "editor.defaultFormatter": "rust-lang.rust"
+    "editor.defaultFormatter": "matklad.rust-analyzer"
   },
   "editor.formatOnSave": true,
-  "cSpell.words": ["linkr"]
+  "cSpell.words": [
+    "linkr"
+  ]
 }

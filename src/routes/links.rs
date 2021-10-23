@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use rocket::form::Form;
 use rocket::http::Status;
-use rocket::response::{Flash, Redirect};
+use rocket::response::status;
+use rocket::serde::{json::Json, Deserialize};
 
 use chrono::Utc;
 use diesel::result::DatabaseErrorKind;
@@ -27,15 +27,17 @@ use crate::db::DbConn;
 use crate::models::links::Link;
 use crate::models::users::User;
 
-#[derive(FromForm)]
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
 pub struct NewLink {
     short: String,
     long: String,
     notes: String,
 }
 
-const RESERVED_LINKS: [&str; 9] = [
+const RESERVED_LINKS: [&'static str; 10] = [
     "",
+    "_app",
     "api",
     "login",
     "resource",
@@ -46,18 +48,18 @@ const RESERVED_LINKS: [&str; 9] = [
     "manage_account",
 ];
 
-#[post("/new", data = "<link_form>")]
+#[post("/new", data = "<link_json>")]
 pub async fn shorten(
     conn: DbConn,
-    link_form: Form<NewLink>,
+    link_json: Json<NewLink>,
     user: User,
-) -> Result<Flash<Redirect>, Status> {
-    let new_link = link_form.into_inner();
+) -> Result<status::Created<()>, status::Custom<&'static str>> {
+    let new_link = link_json.into_inner();
 
     // check if the short is alphanumeric
     if !new_link.short.chars().all(char::is_alphanumeric) {
-        return Ok(Flash::error(
-            Redirect::to("/"),
+        return Err(status::Custom(
+            Status::BadRequest,
             "Shorts can only contain alphanumeric characters",
         ));
     }
@@ -67,8 +69,8 @@ pub async fn shorten(
         .iter()
         .any(|&reserved| reserved == new_link.short)
     {
-        return Ok(Flash::error(
-            Redirect::to("/"),
+        return Err(status::Custom(
+            Status::BadRequest,
             "That short is reserved by this website",
         ));
     }
@@ -77,8 +79,8 @@ pub async fn shorten(
     let prefix_correct =
         new_link.long.starts_with("http://") || new_link.long.starts_with("https://");
     if !prefix_correct {
-        return Ok(Flash::error(
-            Redirect::to("/"),
+        return Err(status::Custom(
+            Status::BadRequest,
             "That long does not begin with https:// or http://",
         ));
     }
@@ -86,7 +88,7 @@ pub async fn shorten(
     // create link to insert
     let link = Link {
         short: new_link.short,
-        long: new_link.long,
+        long: new_link.long.clone(),
         notes: new_link.notes,
         created_at: Utc::now(),
         created_by: user.id,
@@ -94,26 +96,50 @@ pub async fn shorten(
 
     // send database request and respond accordingly
     match Link::insert(link, &conn).await {
-        Ok(_) => Ok(Flash::success(Redirect::to("/"), "Link created!")),
-        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(Flash::error(
-            Redirect::to("/"),
+        Ok(_) => Ok(status::Created::new(new_link.long)),
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Err(status::Custom(
+            Status::Conflict,
             "That short is already in use",
         )),
-        Err(_) => Ok(Flash::error(
-            Redirect::to("/"),
+        Err(_) => Err(status::Custom(
+            Status::InternalServerError,
             "There was an internal server error",
         )),
     }
 }
 
-#[derive(FromForm)]
-pub struct Short {
-    short: String,
+#[get("/all")]
+pub async fn get_all(
+    conn: DbConn,
+    user: User,
+) -> Result<status::Custom<Json<Vec<Link>>>, status::Custom<()>> {
+    // check permission
+    if !user.manage_links {
+        return Err(status::Custom(Status::Forbidden, ()));
+    }
+
+    // get from database
+    match Link::all(&conn).await {
+        Ok(links) => Ok(status::Custom(Status::Accepted, Json(links))),
+        Err(_) => Err(status::Custom(Status::InternalServerError, ())),
+    }
 }
 
-#[post("/delete", data = "<short_form>")]
-pub async fn delete(conn: DbConn, short_form: Form<Short>, user: User) -> Status {
-    let short = short_form.into_inner().short;
+#[get("/for_user")]
+pub async fn get_for_user(
+    conn: DbConn,
+    user: User,
+) -> Result<status::Custom<Json<Vec<Link>>>, status::Custom<()>> {
+    // get from database
+    match Link::all_for_user(user.id, &conn).await {
+        Ok(links) => Ok(status::Custom(Status::Accepted, Json(links))),
+        Err(_) => Err(status::Custom(Status::InternalServerError, ())),
+    }
+}
+
+#[delete("/delete", data = "<short>")]
+pub async fn delete(conn: DbConn, short: String, user: User) -> status::Custom<()> {
+    // let short = short_form.into_inner().short;
 
     match check_can_edit(&user, &short, &conn).await {
         Ok(_) => {}
@@ -121,20 +147,21 @@ pub async fn delete(conn: DbConn, short_form: Form<Short>, user: User) -> Status
     }
 
     match Link::delete(short.to_string(), &conn).await {
-        Ok(_) => Status::Ok,
-        Err(Error::NotFound) => Status::NotFound,
-        Err(_) => Status::InternalServerError,
+        Ok(_) => status::Custom(Status::Ok, ()),
+        Err(Error::NotFound) => status::Custom(Status::NotFound, ()),
+        Err(_) => status::Custom(Status::InternalServerError, ()),
     }
 }
 
-#[derive(FromForm)]
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
 pub struct UpdateLong {
     short: String,
     long: String,
 }
 
-#[post("/update", data = "<update_form>")]
-pub async fn update(conn: DbConn, update_form: Form<UpdateLong>, user: User) -> Status {
+#[patch("/update", data = "<update_form>")]
+pub async fn update(conn: DbConn, update_form: Json<UpdateLong>, user: User) -> status::Custom<()> {
     let update = update_form.into_inner();
 
     match check_can_edit(&user, &update.short, &conn).await {
@@ -143,23 +170,22 @@ pub async fn update(conn: DbConn, update_form: Form<UpdateLong>, user: User) -> 
     }
 
     match Link::update(update.short.to_string(), update.long.to_string(), &conn).await {
-        Ok(_) => Status::Ok,
-        Err(Error::NotFound) => Status::NotFound,
-        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Status::Conflict,
-        Err(_) => Status::InternalServerError,
+        Ok(_) => status::Custom(Status::Ok, ()),
+        Err(Error::NotFound) => status::Custom(Status::NotFound, ()),
+        Err(_) => status::Custom(Status::InternalServerError, ()),
     }
 }
 
-async fn check_can_edit(user: &User, short: &str, conn: &DbConn) -> Result<(), Status> {
+async fn check_can_edit(user: &User, short: &str, conn: &DbConn) -> Result<(), status::Custom<()>> {
     if !user.manage_links {
         let link_user = match Link::get(short.to_string(), &conn).await {
             Ok(link) => link.created_by,
-            Err(Error::NotFound) => return Err(Status::NotFound),
-            Err(_) => return Err(Status::InternalServerError),
+            Err(Error::NotFound) => return Err(status::Custom(Status::NotFound, ())),
+            Err(_) => return Err(status::Custom(Status::InternalServerError, ())),
         };
 
         if link_user != user.id {
-            return Err(Status::Forbidden);
+            return Err(status::Custom(Status::Forbidden, ()));
         }
     }
 

@@ -26,10 +26,8 @@ extern crate diesel_migrations;
 
 use rocket::fairing::AdHoc;
 use rocket::{Build, Rocket};
-use rocket_dyn_templates::Template;
 
 mod auth;
-mod catchers;
 mod crypto;
 mod db;
 mod models;
@@ -42,25 +40,28 @@ fn rocket() -> Rocket<Build> {
     rocket::custom(db::db_configurator())
         .attach(db::DbConn::fairing())
         .attach(AdHoc::on_ignite("Database Migrations", run_db_migrations))
-        .attach(Template::fairing())
+        // .attach(Template::fairing())
         .mount(
             "/",
             routes![
-                routes::pages::link,
-                routes::pages::index,
-                routes::pages::new_user,
-                routes::pages::setup,
-                routes::pages::login,
-                routes::pages::manage_links,
-                routes::pages::manage_users,
-                routes::pages::manage_account,
-                routes::static_files::all_resources
+                routes::client::link,
+                routes::client::index,
+                routes::client::new_user,
+                routes::client::setup,
+                routes::client::login,
+                routes::client::manage_links,
+                routes::client::manage_users,
+                routes::client::manage_account,
+                routes::client::resources,
+                routes::client::svelte_gen
             ],
         )
         .mount(
             "/api/links/",
             routes![
                 routes::links::shorten,
+                routes::links::get_all,
+                routes::links::get_for_user,
                 routes::links::delete,
                 routes::links::update
             ],
@@ -71,13 +72,12 @@ fn rocket() -> Rocket<Build> {
                 routes::users::new,
                 routes::users::login,
                 routes::users::logout,
-                routes::users::delete_current,
-                routes::users::disable_current,
-                routes::users::delete_by_id,
-                routes::users::disable_by_id,
-                routes::users::enable_by_id,
+                routes::users::get_all,
+                routes::users::get_current,
+                routes::users::delete,
+                routes::users::disable,
+                routes::users::enable,
                 routes::users::update_permissions,
-                routes::users::update_own_username,
                 routes::users::update_username,
                 routes::users::update_password
             ],
@@ -85,11 +85,11 @@ fn rocket() -> Rocket<Build> {
         .register(
             "/",
             catchers![
-                catchers::unauthorized,
-                catchers::forbidden,
-                catchers::not_found,
-                catchers::internal_error,
-                catchers::service_unavailable
+                routes::client::unauthorized,
+                routes::client::forbidden,
+                routes::client::not_found,
+                routes::client::internal_error,
+                routes::client::service_unavailable
             ],
         )
 }

@@ -58,7 +58,7 @@ pub async fn new(
         }
         None => match User::count(&conn).await {
             Ok(count) => {
-                if !count == 0 {
+                if count == 0 {
                     true
                 } else {
                     return Err(status::Custom(

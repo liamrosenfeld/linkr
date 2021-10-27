@@ -35,18 +35,20 @@ You can deploy with docker to a wide range of hosts as long a you provide these 
 
 ## Local Development
 
+Steps to run on localhost:8000
+
 ### Fully Local
 
 Backend:
 
 1. [Install Rust](https://www.rust-lang.org/tools/install)
 2. [Install Postgres](https://www.postgresql.org/download/)
+   - Start with `pg_ctl -D /usr/local/var/postgres start`
 3. Install the Diesel CLI: `cargo install diesel_cli`
 4. Open terminal at project directory
 5. Create a `.env` file that has the contents `DATABASE_URL=postgres://[YOUR USERNAME]:[YOUR PASSWORD]@localhost/linkr`
-6. Use Rust nightly for this directory: `rustup override set nightly`
-7. Setup the database: `diesel setup`
-8. Run: `cargo run`
+6. Setup the database: `diesel setup`
+7. Run: `cargo run`
 
 Frontend:
 
@@ -58,7 +60,7 @@ Frontend:
 ### With Docker
 
 1. [Install Docker](https://docs.docker.com/get-docker/)
-2. Run: `docker-compose up`
+2. Run: `docker compose up`
 
 ### New Database Migrations
 

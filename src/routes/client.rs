@@ -44,7 +44,7 @@ const FRONTEND_PATH: &str = rocket::fs::relative!("frontend/build/");
 
 // running in container -> serve from absolute pat
 #[cfg(not(debug_assertions))]
-const FRONTEND_PATH: &str = "/app/static";
+const FRONTEND_PATH: &str = "/static/";
 
 async fn open_page_index(page: &'static str) -> NamedFile {
     let dir = PathBuf::from(format!("{}{}{}", FRONTEND_PATH, page, "/index.html"));

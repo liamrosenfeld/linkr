@@ -1,0 +1,458 @@
+{
+  "db": "PostgreSQL",
+  "0ea89bcc6c4293efaca4e1e8cec7dd5b9bb9d849f85431a16c745f09fd56bcd6": {
+    "query": "DELETE FROM links WHERE short = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "1368d5580b98d303fe63bcdcbaf4fc179b429425abe0ba825e0e778caa173737": {
+    "query": "UPDATE users SET disabled = true WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "1edf705781e8fea4530e9f97c15fe066d28f6af0e08b2c908f36db5b7eed349f": {
+    "query": "UPDATE users SET username = $1 WHERE id = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "26e7e05427bc7dabcd7815d27764fda2baf4cfe60a2d2d6ee2a1f773dccbbce2": {
+    "query": "SELECT * FROM users",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "pw_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "orig",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "manage_links",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "manage_users",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 6,
+          "name": "disabled",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "2f814122a77c93cef2c289b202f933a893c268396b4677a3dae6b48ee8fa86ca": {
+    "query": "UPDATE users SET pw_hash = $1 WHERE id = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "46ffdf697c7eec01356ce3da0f68703d02ecfc8d322d72854b2277020a7d5be8": {
+    "query": "SELECT DISTINCT * FROM users WHERE username = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "pw_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "orig",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "manage_links",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "manage_users",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 6,
+          "name": "disabled",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "5022093583886b1dcd76a8c31af3e7f58aa894f4fb3e4923bd0d9fff45c4cdf5": {
+    "query": "UPDATE links SET long = $1 WHERE short = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "50293c2e54af11d4c2a553e29b671cef087a159c6ee7182d8ca929ecb748f3b7": {
+    "query": "DELETE FROM users WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "843923b9a0257cf80f1dff554e7dc8fdfc05f489328e8376513124dfb42996e3": {
+    "query": "SELECT * FROM users WHERE id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "pw_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "orig",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "manage_links",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "manage_users",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 6,
+          "name": "disabled",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "89ed744dff0795c39d9a667394067d4fc2289135ecfa4337deb8cc3587593785": {
+    "query": "UPDATE users SET disabled = false WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "9acb88ab18ab5d32966c058ddac7c3bfd2bb5266c587945a7cd8d5ce0e3140dc": {
+    "query": "SELECT * FROM links",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "short",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "long",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "notes",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 4,
+          "name": "created_by",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "a302cc5847292a8726659546665c18175085aaaa84b756e262acd44ae92bf585": {
+    "query": "SELECT * FROM links WHERE short = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "short",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "long",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "notes",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 4,
+          "name": "created_by",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "c0e91618814af3a17650cc30202bf7121ed3fa3d41820e3184737f134cf0173e": {
+    "query": "INSERT\n            INTO users (username, pw_hash, orig, manage_links, manage_users)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING id",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Bool",
+          "Bool",
+          "Bool"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "c68a936e0ac9c2df1e8c4dcf30563d8490a6eea8c6c29679fc87632a17611c35": {
+    "query": "INSERT INTO links (short, long, notes, created_at, created_by)\n            VALUES ($1, $2, $3, $4, $5)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Timestamptz",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "ca636fa563789bb83fc8bac8dda7de73125d481d5b208eb87bc0f6bbd9f10823": {
+    "query": "\n            UPDATE users\n            SET manage_links = $1, manage_users = $2\n            WHERE id = $3",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Bool",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "d3f7666366a36739e1830fdb1a9a5d62d6285a02117a87ab1d3973002e2a263c": {
+    "query": "SELECT COUNT(id) FROM users",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "ea6bb4a47fff79a2d48cd2610960a2301ce425f73b1892987552972d0e5bd89a": {
+    "query": "SELECT * FROM links WHERE created_by = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "short",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "long",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "notes",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamptz"
+        },
+        {
+          "ordinal": 4,
+          "name": "created_by",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  }
+}

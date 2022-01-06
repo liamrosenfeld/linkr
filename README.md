@@ -33,7 +33,7 @@ You can deploy with docker to a wide range of hosts as long a you provide these 
 1. Go to the page `/setup` to create your first account before you publicly release the website
 2. Go to `/new_user` to create accounts for the rest of your team
 
-## Local Development
+## Running Locally
 
 Steps to run on localhost:8000
 
@@ -44,11 +44,9 @@ Backend:
 1. [Install Rust](https://www.rust-lang.org/tools/install)
 2. [Install Postgres](https://www.postgresql.org/download/)
    - Start with `pg_ctl -D /usr/local/var/postgres start`
-3. Install the Diesel CLI: `cargo install diesel_cli`
-4. Open terminal at project directory
-5. Create a `.env` file that has the contents `DATABASE_URL=postgres://[YOUR USERNAME]:[YOUR PASSWORD]@localhost/linkr`
-6. Setup the database: `diesel setup`
-7. Run: `cargo run`
+3. Open terminal at project directory
+4. Create a `.env` file that has the contents `DATABASE_URL=postgres://[YOUR USERNAME]:[YOUR PASSWORD]@localhost/linkr`
+5. Run `cargo run`
 
 Frontend:
 
@@ -62,6 +60,9 @@ Frontend:
 1. [Install Docker](https://docs.docker.com/get-docker/)
 2. Run: `docker compose up`
 
-### New Database Migrations
+## Database Commands
 
-After creating a new migration either run `diesel print-schema > './src/schema.rs'` or `diesel migration run`
+Install the SQLX CLI: `cargo install sqlx-cli`
+
+- After Changing a `query!`: `cargo sqlx prepare`
+- New Migration: `sqlx migrate add <name>`

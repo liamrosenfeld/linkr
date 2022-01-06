@@ -18,12 +18,12 @@
 use rocket::http::Status;
 use rocket::response::status;
 use rocket::serde::{json::Json, Deserialize};
+use rocket_db_pools::Connection;
 
 use chrono::Utc;
-use diesel::result::DatabaseErrorKind;
-use diesel::result::Error;
+use sqlx::Error;
 
-use crate::db::DbConn;
+use crate::db::Db;
 use crate::models::links::Link;
 use crate::models::users::User;
 
@@ -50,7 +50,7 @@ const RESERVED_LINKS: [&'static str; 10] = [
 
 #[post("/new", data = "<link_json>")]
 pub async fn shorten(
-    conn: DbConn,
+    mut conn: Connection<Db>,
     link_json: Json<NewLink>,
     user: User,
 ) -> Result<status::Created<()>, status::Custom<&'static str>> {
@@ -95,12 +95,21 @@ pub async fn shorten(
     };
 
     // send database request and respond accordingly
-    match Link::insert(link, &conn).await {
+    match Link::insert(link, &mut conn).await {
         Ok(_) => Ok(status::Created::new(new_link.long)),
-        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Err(status::Custom(
-            Status::Conflict,
-            "That short is already in use",
-        )),
+        Err(Error::Database(database_err)) => {
+            if database_err.code().expect("No database error code") == "23505" {
+                Err(status::Custom(
+                    Status::Conflict,
+                    "That short is already in use",
+                ))
+            } else {
+                Err(status::Custom(
+                    Status::InternalServerError,
+                    "There was an internal server error",
+                ))
+            }
+        }
         Err(_) => Err(status::Custom(
             Status::InternalServerError,
             "There was an internal server error",
@@ -110,7 +119,7 @@ pub async fn shorten(
 
 #[get("/all")]
 pub async fn get_all(
-    conn: DbConn,
+    mut conn: Connection<Db>,
     user: User,
 ) -> Result<status::Custom<Json<Vec<Link>>>, status::Custom<()>> {
     // check permission
@@ -119,7 +128,7 @@ pub async fn get_all(
     }
 
     // get from database
-    match Link::all(&conn).await {
+    match Link::all(&mut conn).await {
         Ok(links) => Ok(status::Custom(Status::Accepted, Json(links))),
         Err(_) => Err(status::Custom(Status::InternalServerError, ())),
     }
@@ -127,28 +136,28 @@ pub async fn get_all(
 
 #[get("/for_user")]
 pub async fn get_for_user(
-    conn: DbConn,
+    mut conn: Connection<Db>,
     user: User,
 ) -> Result<status::Custom<Json<Vec<Link>>>, status::Custom<()>> {
     // get from database
-    match Link::all_for_user(user.id, &conn).await {
+    match Link::all_for_user(user.id, &mut conn).await {
         Ok(links) => Ok(status::Custom(Status::Accepted, Json(links))),
         Err(_) => Err(status::Custom(Status::InternalServerError, ())),
     }
 }
 
 #[delete("/delete", data = "<short>")]
-pub async fn delete(conn: DbConn, short: String, user: User) -> status::Custom<()> {
+pub async fn delete(mut conn: Connection<Db>, short: String, user: User) -> status::Custom<()> {
     // let short = short_form.into_inner().short;
 
-    match check_can_edit(&user, &short, &conn).await {
+    match check_can_edit(&user, &short, &mut conn).await {
         Ok(_) => {}
         Err(err) => return err,
     }
 
-    match Link::delete(short.to_string(), &conn).await {
+    match Link::delete(short.to_string(), &mut conn).await {
         Ok(_) => status::Custom(Status::Ok, ()),
-        Err(Error::NotFound) => status::Custom(Status::NotFound, ()),
+        Err(Error::RowNotFound) => status::Custom(Status::NotFound, ()),
         Err(_) => status::Custom(Status::InternalServerError, ()),
     }
 }
@@ -161,26 +170,34 @@ pub struct UpdateLong {
 }
 
 #[patch("/update", data = "<update_form>")]
-pub async fn update(conn: DbConn, update_form: Json<UpdateLong>, user: User) -> status::Custom<()> {
+pub async fn update(
+    mut conn: Connection<Db>,
+    update_form: Json<UpdateLong>,
+    user: User,
+) -> status::Custom<()> {
     let update = update_form.into_inner();
 
-    match check_can_edit(&user, &update.short, &conn).await {
+    match check_can_edit(&user, &update.short, &mut conn).await {
         Ok(_) => {}
         Err(err) => return err,
     }
 
-    match Link::update(update.short.to_string(), update.long.to_string(), &conn).await {
+    match Link::update(update.short.to_string(), update.long.to_string(), &mut conn).await {
         Ok(_) => status::Custom(Status::Ok, ()),
-        Err(Error::NotFound) => status::Custom(Status::NotFound, ()),
+        Err(Error::RowNotFound) => status::Custom(Status::NotFound, ()),
         Err(_) => status::Custom(Status::InternalServerError, ()),
     }
 }
 
-async fn check_can_edit(user: &User, short: &str, conn: &DbConn) -> Result<(), status::Custom<()>> {
+async fn check_can_edit(
+    user: &User,
+    short: &str,
+    conn: &mut Connection<Db>,
+) -> Result<(), status::Custom<()>> {
     if !user.manage_links {
-        let link_user = match Link::get(short.to_string(), &conn).await {
+        let link_user = match Link::get(short.to_string(), &mut *conn).await {
             Ok(link) => link.created_by,
-            Err(Error::NotFound) => return Err(status::Custom(Status::NotFound, ())),
+            Err(Error::RowNotFound) => return Err(status::Custom(Status::NotFound, ())),
             Err(_) => return Err(status::Custom(Status::InternalServerError, ())),
         };
 

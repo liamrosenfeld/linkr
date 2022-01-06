@@ -15,15 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use rocket::serde::Serialize;
-use rocket_sync_db_pools::diesel;
-use rocket_sync_db_pools::diesel::prelude::*;
+use rocket_db_pools::{sqlx, Connection};
 
-use crate::db::DbConn;
-use crate::schema::users;
+use crate::db::Db;
 
-#[derive(Queryable, Serialize, FromForm)]
-#[serde(crate = "rocket::serde")]
+#[derive(sqlx::FromRow)]
 pub struct User {
     pub id: i32,
     pub username: String,
@@ -34,8 +30,6 @@ pub struct User {
     pub disabled: bool,
 }
 
-#[derive(Insertable)]
-#[table_name = "users"]
 pub struct InsertableUser {
     pub username: String,
     pub pw_hash: String,
@@ -44,109 +38,124 @@ pub struct InsertableUser {
     pub manage_users: bool,
 }
 
-#[derive(AsChangeset)]
-#[table_name = "users"]
-struct PermissionForm {
-    manage_links: bool,
-    manage_users: bool,
-}
-
 impl User {
-    pub async fn get(id: i32, db: &DbConn) -> QueryResult<User> {
-        db.run(move |conn| users::table.find(id).get_result(conn))
+    pub async fn get(id: i32, conn: &mut Connection<Db>) -> sqlx::Result<User> {
+        sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", id)
+            .fetch_one(&mut **conn)
             .await
     }
 
-    pub async fn get_by_name(name: String, db: &DbConn) -> QueryResult<User> {
-        use crate::schema::users::dsl::username;
-        db.run(move |conn| {
-            users::table
-                .distinct()
-                .filter(username.eq(name))
-                .get_result(conn)
-        })
+    pub async fn get_by_name(name: String, conn: &mut Connection<Db>) -> sqlx::Result<User> {
+        sqlx::query_as!(
+            User,
+            "SELECT DISTINCT * FROM users WHERE username = $1",
+            name
+        )
+        .fetch_one(&mut **conn)
         .await
     }
 
-    pub async fn all(db: &DbConn) -> QueryResult<Vec<User>> {
-        db.run(move |conn| users::table.order(users::id.desc()).load(conn))
+    pub async fn all(conn: &mut Connection<Db>) -> sqlx::Result<Vec<User>> {
+        sqlx::query_as!(User, "SELECT * FROM users")
+            .fetch_all(&mut **conn)
             .await
     }
 
-    pub async fn insert(user: InsertableUser, db: &DbConn) -> QueryResult<User> {
-        db.run(move |conn| {
-            diesel::insert_into(users::table)
-                .values(user)
-                .get_result::<User>(conn)
-        })
-        .await
+    pub async fn insert(user: InsertableUser, conn: &mut Connection<Db>) -> sqlx::Result<i32> {
+        let res = sqlx::query!(
+            r"INSERT
+            INTO users (username, pw_hash, orig, manage_links, manage_users)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id",
+            user.username,
+            user.pw_hash,
+            user.orig,
+            user.manage_links,
+            user.manage_users
+        )
+        .fetch_one(&mut **conn)
+        .await?;
+        Ok(res.id)
     }
 
-    pub async fn delete(id: i32, db: &DbConn) -> QueryResult<usize> {
-        User::get(id, db).await?;
-        db.run(move |conn| diesel::delete(users::table.find(id)).execute(conn))
-            .await
+    pub async fn delete(id: i32, conn: &mut Connection<Db>) -> sqlx::Result<()> {
+        // check that the user exists
+        sqlx::query!("SELECT * FROM users WHERE id = $1", id)
+            .fetch_one(&mut **conn)
+            .await?;
+
+        // delete that user
+        sqlx::query!("DELETE FROM users WHERE id = $1", id)
+            .execute(&mut **conn)
+            .await?;
+
+        Ok(())
     }
 
-    pub async fn disable(id: i32, db: &DbConn) -> QueryResult<usize> {
-        use crate::schema::users::dsl::disabled;
-        db.run(move |conn| {
-            diesel::update(users::table.find(id))
-                .set(disabled.eq(true))
-                .execute(conn)
-        })
-        .await
+    pub async fn disable(id: i32, conn: &mut Connection<Db>) -> sqlx::Result<()> {
+        sqlx::query!("UPDATE users SET disabled = true WHERE id = $1", id)
+            .execute(&mut **conn)
+            .await?;
+        Ok(())
     }
 
-    pub async fn enable(id: i32, db: &DbConn) -> QueryResult<usize> {
-        use crate::schema::users::dsl::disabled;
-        db.run(move |conn| {
-            diesel::update(users::table.find(id))
-                .set(disabled.eq(false))
-                .execute(conn)
-        })
-        .await
+    pub async fn enable(id: i32, conn: &mut Connection<Db>) -> sqlx::Result<()> {
+        sqlx::query!("UPDATE users SET disabled = false WHERE id = $1", id)
+            .execute(&mut **conn)
+            .await?;
+        Ok(())
     }
 
     pub async fn update_permissions(
         id: i32,
         manage_links: bool,
         manage_users: bool,
-        db: &DbConn,
-    ) -> QueryResult<usize> {
-        db.run(move |conn| {
-            diesel::update(users::table.find(id))
-                .set(&PermissionForm {
-                    manage_links,
-                    manage_users,
-                })
-                .execute(conn)
-        })
-        .await
+        conn: &mut Connection<Db>,
+    ) -> sqlx::Result<()> {
+        sqlx::query!(
+            r"
+            UPDATE users
+            SET manage_links = $1, manage_users = $2
+            WHERE id = $3",
+            manage_links,
+            manage_users,
+            id
+        )
+        .execute(&mut **conn)
+        .await?;
+        Ok(())
     }
 
-    pub async fn update_username(id: i32, new_name: String, db: &DbConn) -> QueryResult<usize> {
-        use crate::schema::users::dsl::username;
-        db.run(move |conn| {
-            diesel::update(users::table.find(id))
-                .set(username.eq(new_name))
-                .execute(conn)
-        })
-        .await
+    pub async fn update_username(
+        id: i32,
+        new_name: String,
+        conn: &mut Connection<Db>,
+    ) -> sqlx::Result<()> {
+        sqlx::query!("UPDATE users SET username = $1 WHERE id = $2", new_name, id)
+            .execute(&mut **conn)
+            .await?;
+        Ok(())
     }
 
-    pub async fn update_password(id: i32, new_pw_hash: String, db: &DbConn) -> QueryResult<usize> {
-        use crate::schema::users::dsl::pw_hash;
-        db.run(move |conn| {
-            diesel::update(users::table.find(id))
-                .set(pw_hash.eq(new_pw_hash))
-                .execute(conn)
-        })
-        .await
+    pub async fn update_password(
+        id: i32,
+        new_pw_hash: String,
+        conn: &mut Connection<Db>,
+    ) -> sqlx::Result<()> {
+        sqlx::query!(
+            "UPDATE users SET pw_hash = $1 WHERE id = $2",
+            new_pw_hash,
+            id
+        )
+        .execute(&mut **conn)
+        .await?;
+        Ok(())
     }
 
-    pub async fn count(db: &DbConn) -> QueryResult<i64> {
-        db.run(move |conn| users::table.select(diesel::dsl::count_star()).first(conn))
-            .await
+    pub async fn count(conn: &mut Connection<Db>) -> sqlx::Result<i64> {
+        let res = sqlx::query!("SELECT COUNT(id) FROM users")
+            .fetch_one(&mut **conn)
+            .await?;
+        Ok(res.count.unwrap_or(0))
     }
 }

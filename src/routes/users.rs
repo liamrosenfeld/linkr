@@ -18,11 +18,11 @@
 use rocket::http::{Cookie, CookieJar, Status};
 use rocket::response::status;
 use rocket::serde::{json::Json, Deserialize, Serialize};
-use rocket_sync_db_pools::diesel::result::{DatabaseErrorKind, Error};
-use rocket_sync_db_pools::diesel::QueryResult;
+use rocket_db_pools::Connection;
+use sqlx::Error;
 
 use crate::crypto::encrypt_pw;
-use crate::db::DbConn;
+use crate::db::Db;
 use crate::models::users::{InsertableUser, User};
 
 /* ----------------------------------- new ---------------------------------- */
@@ -41,7 +41,7 @@ pub async fn new(
     new_user_form: Json<NewUser>,
     user: Option<User>,
     cookies: &CookieJar<'_>,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Created<()>, status::Custom<&'static str>> {
     // if user is authorized and has manage user permission, allow creation of not original
     // if user is authorized and they do not have manage user permission, return forbidden
@@ -56,7 +56,7 @@ pub async fn new(
                 false
             }
         }
-        None => match User::count(&conn).await {
+        None => match User::count(&mut conn).await {
             Ok(count) => {
                 if count == 0 {
                     true
@@ -95,23 +95,28 @@ pub async fn new(
     let new_user = InsertableUser::new_from_plain(user_info, orig);
 
     // insert user
-    match User::insert(new_user, &conn).await {
-        Ok(new_user) => {
+    return match User::insert(new_user, &mut conn).await {
+        Ok(new_id) => {
             if orig {
-                cookies.add_private(Cookie::new("user_id", new_user.id.to_string()));
+                cookies.add_private(Cookie::new("user_id", new_id.to_string()));
             }
-            return Ok(status::Created::new(new_user.id.to_string()));
+            Ok(status::Created::new(new_id.to_string()))
         }
-        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
-            return Err(status::Custom(Status::Conflict, "Username already taken"))
+        Err(Error::Database(database_err)) => {
+            if database_err.code().expect("No database error code") == "23505" {
+                Err(status::Custom(Status::Conflict, "Username already taken"))
+            } else {
+                Err(status::Custom(
+                    Status::InternalServerError,
+                    "Could not create new user",
+                ))
+            }
         }
-        Err(_) => {
-            return Err(status::Custom(
-                Status::InternalServerError,
-                "Could not create new user",
-            ))
-        }
-    }
+        Err(_) => Err(status::Custom(
+            Status::InternalServerError,
+            "Could not create new user",
+        )),
+    };
 }
 
 /* ----------------------------- log in and out ----------------------------- */
@@ -127,10 +132,10 @@ pub struct Login {
 pub async fn login(
     login_json: Json<Login>,
     cookies: &CookieJar<'_>,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Custom<Json<PublicUser>>, status::Unauthorized<&'static str>> {
     let login = login_json.into_inner();
-    match User::get_by_name(login.username, &conn).await {
+    match User::get_by_name(login.username, &mut conn).await {
         Ok(selected_user) => {
             if selected_user.disabled {
                 return Err(status::Unauthorized(Some("That user is disabled")));
@@ -184,12 +189,12 @@ impl PublicUser {
 #[get("/all")]
 pub async fn get_all(
     user: User,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Custom<Json<Vec<PublicUser>>>, status::Custom<()>> {
     if !user.manage_users {
         return Err(status::Custom(Status::Forbidden, ()));
     }
-    match User::all(&conn).await {
+    match User::all(&mut conn).await {
         Ok(all_users) => {
             let public_users: Vec<PublicUser> = all_users
                 .into_iter()
@@ -219,13 +224,13 @@ pub struct DeleteRequest {
 pub async fn delete(
     request_form: Json<DeleteRequest>,
     user: User,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Custom<()>, status::Custom<String>> {
     let request = request_form.into_inner();
-    if let Err(err) = check_destruct(&request, &user, &conn, "delete").await {
+    if let Err(err) = check_destruct(&request, &user, &mut conn, "delete").await {
         return Err(err);
     }
-    let res = User::delete(request.id, &conn).await;
+    let res = User::delete(request.id, &mut conn).await;
     match_destruct_result_other(res)
 }
 
@@ -233,13 +238,13 @@ pub async fn delete(
 pub async fn disable(
     request_form: Json<DeleteRequest>,
     user: User,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Custom<()>, status::Custom<String>> {
     let request = request_form.into_inner();
-    if let Err(err) = check_destruct(&request, &user, &conn, "disable").await {
+    if let Err(err) = check_destruct(&request, &user, &mut conn, "disable").await {
         return Err(err);
     }
-    let res = User::disable(request.id, &conn).await;
+    let res = User::disable(request.id, &mut conn).await;
     match_destruct_result_other(res)
 }
 
@@ -247,35 +252,35 @@ pub async fn disable(
 pub async fn enable(
     request_form: Json<DeleteRequest>,
     user: User,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Custom<()>, status::Custom<String>> {
     let request = request_form.into_inner();
-    if let Err(err) = check_destruct(&request, &user, &conn, "enable").await {
+    if let Err(err) = check_destruct(&request, &user, &mut conn, "enable").await {
         return Err(err);
     }
-    let res = User::enable(request.id, &conn).await;
+    let res = User::enable(request.id, &mut conn).await;
     match_destruct_result_other(res)
 }
 
 pub async fn check_destruct(
     request: &DeleteRequest,
     current_user: &User,
-    conn: &DbConn,
+    conn: &mut Connection<Db>,
     verb: &str,
 ) -> Result<(), status::Custom<String>> {
-    match User::get(request.id, conn).await {
+    return match User::get(request.id, conn).await {
         Ok(delete_user) => {
             // Action user is original -> No
             if delete_user.orig {
-                return Err(status::Custom(
+                Err(status::Custom(
                     Status::MethodNotAllowed,
                     format!("You cannot {} the original user", verb),
-                ));
+                ))
             }
             // Current user is action user -> Check password confirmation
             else if current_user.id == request.id {
                 // check password
-                return match &request.password {
+                match &request.password {
                     Some(pw) => {
                         if !current_user.verify(pw) {
                             Err(status::Custom(
@@ -290,42 +295,47 @@ pub async fn check_destruct(
                         Status::Unauthorized,
                         format!("You need your password to {} yourself", verb),
                     )),
-                };
+                }
             }
             // Else -> Check if current user can manage users
             else if current_user.manage_users {
-                return Ok(());
+                Ok(())
             } else {
-                return Err(status::Custom(
+                Err(status::Custom(
                     Status::Forbidden,
                     "You cannot manage users.".to_string(),
-                ));
+                ))
             }
         }
-        Err(Error::NotFound) => {
-            return Err(status::Custom(
-                Status::NotFound,
-                "That user cannot be found.".to_string(),
-            ));
-        }
-        Err(_) => {
-            return Err(status::Custom(
-                Status::InternalServerError,
-                "An internal server error occurred.".to_string(),
-            ));
-        }
-    }
-}
-
-fn match_destruct_result_other(
-    result: QueryResult<usize>,
-) -> Result<status::Custom<()>, status::Custom<String>> {
-    match result {
-        Ok(_) => Ok(status::Custom(Status::Ok, ())),
-        Err(Error::NotFound) => Err(status::Custom(
+        Err(Error::RowNotFound) => Err(status::Custom(
             Status::NotFound,
             "That user cannot be found.".to_string(),
         )),
+        Err(_) => Err(status::Custom(
+            Status::InternalServerError,
+            "An internal server error occurred.".to_string(),
+        )),
+    };
+}
+
+fn match_destruct_result_other(
+    result: sqlx::Result<()>,
+) -> Result<status::Custom<()>, status::Custom<String>> {
+    match result {
+        Ok(()) => Ok(status::Custom(Status::Ok, ())),
+        Err(Error::Database(database_error)) => {
+            if database_error.code().expect("No database error code") == "23505" {
+                Err(status::Custom(
+                    Status::Conflict,
+                    "That username is taken".to_string(),
+                ))
+            } else {
+                Err(status::Custom(
+                    Status::InternalServerError,
+                    "An internal server error occurred".to_string(),
+                ))
+            }
+        }
         Err(_) => Err(status::Custom(
             Status::InternalServerError,
             "An internal server error occurred.".to_string(),
@@ -347,7 +357,7 @@ pub struct PermissionsUpdate {
 pub async fn update_permissions(
     permissions_form: Json<PermissionsUpdate>,
     user: User,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> status::Custom<()> {
     let permissions = permissions_form.into_inner();
 
@@ -359,12 +369,12 @@ pub async fn update_permissions(
         permissions.user_id,
         permissions.manage_links,
         permissions.manage_users,
-        &conn,
+        &mut conn,
     )
     .await
     {
         Ok(_) => status::Custom(Status::Ok, ()),
-        Err(Error::NotFound) => status::Custom(Status::NotFound, ()),
+        Err(Error::RowNotFound) => status::Custom(Status::NotFound, ()),
         Err(_) => status::Custom(Status::InternalServerError, ()),
     }
 }
@@ -380,7 +390,7 @@ pub struct UsernameUpdate {
 pub async fn update_username(
     username_form: Json<UsernameUpdate>,
     user: User,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Custom<()>, status::Custom<&'static str>> {
     let username_update = username_form.into_inner();
 
@@ -393,11 +403,21 @@ pub async fn update_username(
         ));
     }
 
-    match User::update_username(username_update.user_id, username_update.new_name, &conn).await {
+    match User::update_username(username_update.user_id, username_update.new_name, &mut conn).await
+    {
         Ok(_) => Ok(status::Custom(Status::Ok, ())),
-        Err(Error::NotFound) => Err(status::Custom(Status::NotFound, "That user does not exist")),
-        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
-            Err(status::Custom(Status::Conflict, "That username is taken"))
+        Err(Error::RowNotFound) => {
+            Err(status::Custom(Status::NotFound, "That user does not exist"))
+        }
+        Err(Error::Database(database_error)) => {
+            if database_error.code().expect("No database error code") == "23505" {
+                Err(status::Custom(Status::Conflict, "That username is taken"))
+            } else {
+                Err(status::Custom(
+                    Status::InternalServerError,
+                    "An internal server error occurred",
+                ))
+            }
         }
         Err(_) => Err(status::Custom(
             Status::InternalServerError,
@@ -418,7 +438,7 @@ pub async fn update_password(
     pw_form: Json<PasswordUpdate>,
     user: User,
     cookies: &CookieJar<'_>,
-    conn: DbConn,
+    mut conn: Connection<Db>,
 ) -> Result<status::Custom<()>, status::Custom<&'static str>> {
     let passwords = pw_form.into_inner();
 
@@ -438,7 +458,7 @@ pub async fn update_password(
 
     let pw_hash = encrypt_pw(&passwords.new_pw);
 
-    match User::update_password(user.id, pw_hash, &conn).await {
+    match User::update_password(user.id, pw_hash, &mut conn).await {
         Ok(_) => {
             cookies.remove_private(Cookie::named("user_id"));
             Ok(status::Custom(Status::Ok, ()))

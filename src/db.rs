@@ -21,11 +21,12 @@ use rocket::figment::{
     value::{Map, Value},
     Figment,
 };
-use rocket_sync_db_pools::diesel;
+use rocket_db_pools::sqlx;
 use std::env;
 
+#[derive(Database)]
 #[database("db")]
-pub struct DbConn(diesel::PgConnection);
+pub struct Db(sqlx::PgPool);
 
 pub fn db_configurator() -> Figment {
     // create get database url

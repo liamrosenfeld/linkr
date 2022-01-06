@@ -17,17 +17,12 @@
 
 use chrono::{DateTime, Utc};
 use rocket::serde::Serialize;
-use rocket_sync_db_pools::diesel;
-use rocket_sync_db_pools::diesel::prelude::*;
+use rocket_db_pools::{sqlx, Connection};
 
-use crate::db::DbConn;
-use crate::models::users::User;
-use crate::schema::links;
+use crate::db::Db;
 
-#[derive(Queryable, Insertable, Serialize, Associations)]
+#[derive(sqlx::FromRow, Serialize)]
 #[serde(crate = "rocket::serde")]
-#[belongs_to(User, foreign_key = "created_by")]
-#[table_name = "links"]
 pub struct Link {
     pub short: String,
     pub long: String,
@@ -38,57 +33,59 @@ pub struct Link {
 }
 
 impl Link {
-    pub async fn get(short: String, db: &DbConn) -> QueryResult<Link> {
-        db.run(move |conn| links::table.find(short).get_result::<Link>(conn))
+    pub async fn get(short: String, conn: &mut Connection<Db>) -> sqlx::Result<Link> {
+        sqlx::query_as!(Link, "SELECT * FROM links WHERE short = $1", short)
+            .fetch_one(&mut **conn)
             .await
     }
 
-    pub async fn all(db: &DbConn) -> QueryResult<Vec<Link>> {
-        db.run(move |conn| {
-            links::table
-                .order(links::created_at.desc())
-                .get_results::<Link>(conn)
-        })
-        .await
-    }
-
-    pub async fn all_for_user(user_id: i32, db: &DbConn) -> QueryResult<Vec<Link>> {
-        use crate::schema::links::dsl::created_by;
-        db.run(move |conn| {
-            links::table
-                .filter(created_by.eq(user_id))
-                .order(links::created_at.desc())
-                .get_results::<Link>(conn)
-        })
-        .await
-    }
-
-    pub async fn update(short: String, new_long: String, db: &DbConn) -> QueryResult<Link> {
-        use crate::schema::links::dsl::long;
-        db.run(move |conn| {
-            diesel::update(links::table.find(short))
-                .set(long.eq(new_long))
-                .get_result::<Link>(conn)
-        })
-        .await
-    }
-
-    pub async fn insert(link: Link, db: &DbConn) -> QueryResult<usize> {
-        db.run(move |conn| {
-            diesel::insert_into(links::table)
-                .values(&link)
-                .execute(conn)
-        })
-        .await
-    }
-
-    pub async fn delete(short: String, db: &DbConn) -> QueryResult<usize> {
-        // if Link::get(short, conn).is_err() {
-        //     return Err(Error::NotFound);
-        // };
-        Link::get(short.clone(), db).await?;
-        db.run(move |conn| diesel::delete(links::table.find(short)).execute(conn))
+    pub async fn all(conn: &mut Connection<Db>) -> sqlx::Result<Vec<Link>> {
+        sqlx::query_as!(Link, "SELECT * FROM links")
+            .fetch_all(&mut **conn)
             .await
+    }
+
+    pub async fn all_for_user(user_id: i32, conn: &mut Connection<Db>) -> sqlx::Result<Vec<Link>> {
+        sqlx::query_as!(Link, "SELECT * FROM links WHERE created_by = $1", user_id)
+            .fetch_all(&mut **conn)
+            .await
+    }
+
+    pub async fn update(
+        short: String,
+        new_long: String,
+        conn: &mut Connection<Db>,
+    ) -> sqlx::Result<()> {
+        sqlx::query!(
+            "UPDATE links SET long = $1 WHERE short = $2",
+            new_long,
+            short
+        )
+        .execute(&mut **conn)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn insert(link: Link, conn: &mut Connection<Db>) -> sqlx::Result<()> {
+        sqlx::query!(
+            r"INSERT INTO links (short, long, notes, created_at, created_by)
+            VALUES ($1, $2, $3, $4, $5)",
+            link.short,
+            link.long,
+            link.notes,
+            link.created_at,
+            link.created_by
+        )
+        .execute(&mut **conn)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn delete(short: String, conn: &mut Connection<Db>) -> sqlx::Result<()> {
+        sqlx::query!("DELETE FROM links WHERE short = $1", short)
+            .execute(&mut **conn)
+            .await?;
+        Ok(())
     }
 }
 

@@ -15,11 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use diesel::result::Error;
 use rocket::http::{Cookie, Status};
 use rocket::request::{FromRequest, Outcome, Request};
+use rocket_db_pools::Connection;
+use sqlx::Error;
 
-use crate::db::DbConn;
+use crate::db::Db;
 use crate::models::users::User;
 
 #[rocket::async_trait]
@@ -38,13 +39,13 @@ impl<'r> FromRequest<'r> for User {
         };
 
         // get database connection
-        let conn = request
-            .guard::<DbConn>()
+        let mut conn = request
+            .guard::<Connection<Db>>()
             .await
             .expect("database needs to be connected");
 
         // get user from database with id and block if disabled
-        match User::get(user_id, &conn).await {
+        match User::get(user_id, &mut conn).await {
             Ok(user) => {
                 if user.disabled {
                     Outcome::Failure((Status::Unauthorized, ()))
@@ -52,7 +53,7 @@ impl<'r> FromRequest<'r> for User {
                     Outcome::Success(user)
                 }
             }
-            Err(Error::NotFound) => {
+            Err(Error::RowNotFound) => {
                 // user id is not valid, so it mist be removed to prevent an infinite loop
                 request.cookies().remove_private(Cookie::named("user_id"));
                 Outcome::Failure((Status::Unauthorized, ()))

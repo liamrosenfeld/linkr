@@ -15,23 +15,24 @@
 // You should have received a copy of the GNU General Public License
 // along with Linkr. If not, see <http://www.gnu.org/licenses/>.
 
-use crate::db::DbConn;
+use crate::db::Db;
 use crate::models::links::Link;
 use crate::models::users::User;
 
-use diesel::result::Error;
 use rocket::fs::NamedFile;
 use rocket::http::Status;
 use rocket::response::Redirect;
+use rocket_db_pools::Connection;
+use sqlx::Error;
 use std::path::PathBuf;
 
 /* ----------------------------- link forwarding ----------------------------- */
 
 #[get("/<short>", rank = 3)]
-pub async fn link(conn: DbConn, short: String) -> Result<Redirect, Status> {
-    match Link::get(short.to_string(), &conn).await {
+pub async fn link(mut conn: Connection<Db>, short: String) -> Result<Redirect, Status> {
+    match Link::get(short.to_string(), &mut conn).await {
         Ok(link) => Ok(Redirect::permanent(link.long)),
-        Err(Error::NotFound) => Err(Status::NotFound),
+        Err(Error::RowNotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }
 }
@@ -113,8 +114,8 @@ pub async fn login(user: Option<User>) -> Result<NamedFile, Redirect> {
 }
 
 #[get("/setup")]
-pub async fn setup(conn: DbConn) -> Result<NamedFile, Status> {
-    match User::count(&conn).await {
+pub async fn setup(mut conn: Connection<Db>) -> Result<NamedFile, Status> {
+    match User::count(&mut conn).await {
         Ok(count) => {
             if count == 0 {
                 Ok(open_page_index("setup").await)

@@ -6,6 +6,7 @@ COPY Cargo.lock .
 COPY Cargo.toml .
 COPY src src
 COPY migrations migrations
+COPY sqlx-data.json .
 
 RUN cargo build --release
 

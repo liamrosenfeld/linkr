@@ -18,29 +18,28 @@
 #[macro_use]
 extern crate rocket;
 #[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate rocket_sync_db_pools;
-#[macro_use]
-extern crate diesel_migrations;
+extern crate rocket_db_pools;
 
+use rocket::fairing;
 use rocket::fairing::AdHoc;
 use rocket::{Build, Rocket};
+use rocket_db_pools::Database;
 
 mod auth;
 mod crypto;
 mod db;
 mod models;
 mod routes;
-mod schema;
 
 #[launch]
 fn rocket() -> Rocket<Build> {
     // setup rocket
     rocket::custom(db::db_configurator())
-        .attach(db::DbConn::fairing())
-        .attach(AdHoc::on_ignite("Database Migrations", run_db_migrations))
-        // .attach(Template::fairing())
+        .attach(db::Db::init())
+        .attach(AdHoc::try_on_ignite(
+            "Database Migrations",
+            run_db_migrations,
+        ))
         .mount(
             "/",
             routes![
@@ -94,18 +93,15 @@ fn rocket() -> Rocket<Build> {
         )
 }
 
-async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
-    // This macro from `diesel_migrations` defines an `embedded_migrations`
-    // module containing a function named `run` that runs the migrations in the
-    // specified directory, initializing the database.
-    embed_migrations!();
-
-    let conn = db::DbConn::get_one(&rocket)
-        .await
-        .expect("Could not connect to database");
-    conn.run(|c| embedded_migrations::run(c))
-        .await
-        .expect("Failed to run database migrations");
-
-    rocket
+async fn run_db_migrations(rocket: Rocket<Build>) -> fairing::Result {
+    match db::Db::fetch(&rocket) {
+        Some(db) => match sqlx::migrate!("./migrations").run(&**db).await {
+            Ok(_) => Ok(rocket),
+            Err(e) => {
+                error!("Failed to initialize SQLx database: {}", e);
+                Err(rocket)
+            }
+        },
+        None => Err(rocket),
+    }
 }

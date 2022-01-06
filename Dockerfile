@@ -1,5 +1,5 @@
 # ---- Build the Backend ---- 
-FROM rust:1.56 as backend
+FROM rust:1.57 as backend
 
 WORKDIR /backend
 COPY Cargo.lock .

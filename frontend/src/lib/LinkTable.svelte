@@ -135,6 +135,14 @@
         break;
     }
   }
+
+  /* ----- Formatting ----- */
+  function formatTimestamp(timestamp) {
+    let date = new Date(timestamp);
+    return `${date.getMonth() + 1}-${date.getDate()}-${
+      date.getFullYear() % 100
+    }`;
+  }
 </script>
 
 <div>
@@ -177,6 +185,9 @@
                   </button>
                 {/if}
               </td>
+            {:else if col == "created_at"}
+              <!-- have formatting if date -->
+              <td>{formatTimestamp(link[col])}</td>
             {:else}
               <td>{link[col]}</td>
             {/if}

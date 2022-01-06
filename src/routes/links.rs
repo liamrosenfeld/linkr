@@ -24,7 +24,7 @@ use chrono::Utc;
 use sqlx::Error;
 
 use crate::db::Db;
-use crate::models::links::Link;
+use crate::models::links::{JoinedLink, Link};
 use crate::models::users::User;
 
 #[derive(Deserialize)]
@@ -121,14 +121,14 @@ pub async fn shorten(
 pub async fn get_all(
     mut conn: Connection<Db>,
     user: User,
-) -> Result<status::Custom<Json<Vec<Link>>>, status::Custom<()>> {
+) -> Result<status::Custom<Json<Vec<JoinedLink>>>, status::Custom<()>> {
     // check permission
     if !user.manage_links {
         return Err(status::Custom(Status::Forbidden, ()));
     }
 
     // get from database
-    match Link::all(&mut conn).await {
+    match Link::all_joined(&mut conn).await {
         Ok(links) => Ok(status::Custom(Status::Accepted, Json(links))),
         Err(_) => Err(status::Custom(Status::InternalServerError, ())),
     }

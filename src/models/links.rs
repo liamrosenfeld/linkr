@@ -27,9 +27,18 @@ pub struct Link {
     pub short: String,
     pub long: String,
     pub notes: String,
-    #[serde(with = "date_format")]
     pub created_at: DateTime<Utc>,
     pub created_by: i32,
+}
+
+#[derive(sqlx::FromRow, Serialize)]
+#[serde(crate = "rocket::serde")]
+pub struct JoinedLink {
+    pub short: String,
+    pub long: String,
+    pub notes: String,
+    pub created_at: DateTime<Utc>,
+    pub created_by: Option<String>,
 }
 
 impl Link {
@@ -39,10 +48,16 @@ impl Link {
             .await
     }
 
-    pub async fn all(conn: &mut Connection<Db>) -> sqlx::Result<Vec<Link>> {
-        sqlx::query_as!(Link, "SELECT * FROM links")
-            .fetch_all(&mut **conn)
-            .await
+    pub async fn all_joined(conn: &mut Connection<Db>) -> sqlx::Result<Vec<JoinedLink>> {
+        sqlx::query_as!(
+            JoinedLink,
+            r"SELECT
+            links.short, links.long, links.notes, links.created_at, users.username as created_by
+            FROM links
+            LEFT JOIN users ON links.created_by=users.id"
+        )
+        .fetch_all(&mut **conn)
+        .await
     }
 
     pub async fn all_for_user(user_id: i32, conn: &mut Connection<Db>) -> sqlx::Result<Vec<Link>> {
@@ -86,22 +101,5 @@ impl Link {
             .execute(&mut **conn)
             .await?;
         Ok(())
-    }
-}
-
-/* ------------------------------- formatters ------------------------------- */
-
-mod date_format {
-    use chrono::{DateTime, Utc};
-    use rocket::serde::Serializer;
-
-    const FORMAT: &'static str = "%D";
-
-    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let s = format!("{}", date.format(FORMAT));
-        serializer.serialize_str(&s)
     }
 }

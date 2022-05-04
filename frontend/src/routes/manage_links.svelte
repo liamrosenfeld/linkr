@@ -5,6 +5,6 @@
 <div id="content">
   <div id="manage">
     <h2>All Links</h2>
-    <LinkTable show_author={true} />
+    <LinkTable showing_all={true} />
   </div>
 </div>

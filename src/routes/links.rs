@@ -17,7 +17,7 @@
 
 use rocket::http::Status;
 use rocket::response::status;
-use rocket::serde::{json::Json, Deserialize};
+use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket_db_pools::Connection;
 
 use chrono::Utc;
@@ -49,7 +49,7 @@ const RESERVED_LINKS: [&'static str; 10] = [
 ];
 
 #[post("/new", data = "<link_json>")]
-pub async fn shorten(
+pub async fn new(
     mut conn: Connection<Db>,
     link_json: Json<NewLink>,
     user: User,
@@ -115,6 +115,96 @@ pub async fn shorten(
             "There was an internal server error",
         )),
     }
+}
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+pub struct BulkResult {
+    short: String,
+    created: bool,
+    reason: &'static str,
+}
+
+#[post("/new_bulk", data = "<links_json>")]
+pub async fn new_bulk(
+    mut conn: Connection<Db>,
+    links_json: Json<Vec<NewLink>>,
+    user: User,
+) -> status::Accepted<Json<Vec<BulkResult>>> {
+    let new_links = links_json.into_inner();
+    let mut result: Vec<BulkResult> = Vec::with_capacity(new_links.len());
+
+    for new_link in new_links {
+        // check if the short is reserved by this site
+        if RESERVED_LINKS
+            .iter()
+            .any(|&reserved| reserved == new_link.short)
+        {
+            result.push(BulkResult {
+                short: new_link.short,
+                created: false,
+                reason: "Reserved Short",
+            });
+            continue;
+        }
+
+        // check that the long is a valid url
+        let prefix_correct =
+            new_link.long.starts_with("http://") || new_link.long.starts_with("https://");
+        if !prefix_correct {
+            result.push(BulkResult {
+                short: new_link.short,
+                created: false,
+                reason: "Long does not begin with https:// or http://",
+            });
+            continue;
+        }
+
+        // create link to insert
+        let link = Link {
+            short: new_link.short.clone(),
+            long: new_link.long,
+            notes: new_link.notes,
+            created_at: Utc::now(),
+            created_by: user.id,
+        };
+
+        // send database request and respond accordingly
+        match Link::insert(link, &mut conn).await {
+            Ok(_) => {
+                result.push(BulkResult {
+                    short: new_link.short,
+                    created: true,
+                    reason: "",
+                });
+                continue;
+            }
+            Err(Error::Database(database_err)) => {
+                if database_err.code().expect("No database error code") == "23505" {
+                    result.push(BulkResult {
+                        short: new_link.short,
+                        created: false,
+                        reason: "Short is taken",
+                    });
+                } else {
+                    result.push(BulkResult {
+                        short: new_link.short,
+                        created: false,
+                        reason: "There was an internal server error",
+                    });
+                }
+            }
+            Err(_) => {
+                result.push(BulkResult {
+                    short: new_link.short,
+                    created: false,
+                    reason: "There was an internal server error",
+                });
+            }
+        };
+    }
+
+    return status::Accepted(Some(Json::from(result)));
 }
 
 #[get("/all")]

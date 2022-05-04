@@ -58,7 +58,8 @@ fn rocket() -> Rocket<Build> {
         .mount(
             "/api/links/",
             routes![
-                routes::links::shorten,
+                routes::links::new,
+                routes::links::new_bulk,
                 routes::links::get_all,
                 routes::links::get_for_user,
                 routes::links::delete,

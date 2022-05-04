@@ -71,7 +71,7 @@
 
   <div id="manage">
     <h2>Your Links</h2>
-    <LinkTable bind:this={table} show_author={false} />
+    <LinkTable bind:this={table} showing_all={false} />
   </div>
 </div>
 
